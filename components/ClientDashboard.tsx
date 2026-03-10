@@ -2770,6 +2770,12 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
     setGeneratingStoryboard(script.id);
     try {
       const token = localStorage.getItem('cf_token') || '';
+      if (!token) {
+        setWorkflowToast('Sessão expirada. Faça login novamente.');
+        setTimeout(() => setWorkflowToast(''), 4000);
+        setGeneratingStoryboard(null);
+        return;
+      }
       const res = await fetch('/api/storyboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -2778,6 +2784,12 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
           scenes: scenesToSend.map(sc => ({ id: sc.id, visual: sc.visual || sc.freeContent || '', audio: sc.audio || '' })),
         }),
       });
+      if (res.status === 401) {
+        setWorkflowToast('Sessão expirada. Faça login novamente.');
+        setTimeout(() => setWorkflowToast(''), 4000);
+        setGeneratingStoryboard(null);
+        return;
+      }
       if (!res.ok) throw new Error('Storyboard API failed');
       const data = await res.json();
       const storyboards: { sceneId: string; description: string }[] = data.storyboards || [];
