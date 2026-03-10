@@ -51,8 +51,11 @@ export default function LoginPage() {
       localStorage.setItem('cf_name', data.user.name);
       if (data.user.plan) localStorage.setItem('cf_plan', data.user.plan);
 
-      // Redirect based on subscription status
-      if (data.user.subscriptionStatus !== 'active') {
+      // Admin bypass — always go to dashboard
+      const adminEmails = ['marcosvlogs12@gmail.com', 'teste@creatorflowia.com'];
+      if (adminEmails.includes(data.user.email)) {
+        router.push('/dashboard');
+      } else if (data.user.subscriptionStatus !== 'active') {
         router.push('/subscription-inactive');
       } else {
         router.push('/dashboard');
