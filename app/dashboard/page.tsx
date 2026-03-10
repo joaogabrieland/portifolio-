@@ -249,6 +249,17 @@ export default function DashboardPage() {
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })
         .catch(() => { /* ignore */ });
+      // Fetch fresh user data (email may not be in localStorage yet)
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.user) {
+            setUserEmail(data.user.email || '');
+            setUserName(data.user.name || '');
+            setUserPlan(data.user.plan || '');
+          }
+        })
+        .catch(() => { /* ignore */ });
     }
   }, []);
 
@@ -961,13 +972,13 @@ export default function DashboardPage() {
             </div>
             {/* Right: actions */}
             <div className="flex items-center gap-2">
-              {userEmail === (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'marcosvlogs12@gmail.com') && (
+              {(userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL || userEmail === 'teste@creatorflowia.com' || userEmail === 'marcosvlogs12@gmail.com') && userEmail && (
                 <button
                   onClick={() => router.push('/admin')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-800/50 bg-emerald-900/20 text-emerald-300 text-xs font-bold hover:bg-emerald-900/30 transition-all"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border-2 border-violet-500/60 bg-violet-600/20 text-violet-300 text-xs font-black uppercase tracking-wide hover:bg-violet-600/30 hover:border-violet-400/70 transition-all shadow-[0_0_12px_rgba(139,92,246,0.15)]"
                 >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Admin</span>
+                  <Shield className="w-4 h-4" />
+                  <span>Admin</span>
                 </button>
               )}
               <button
