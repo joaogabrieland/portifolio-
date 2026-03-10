@@ -23,13 +23,13 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen bg-[#0A0A0A]">
       {/* Left panel — visual/brand (hidden on mobile) */}
-      <div className="relative hidden lg:flex lg:w-1/2 flex-col items-center justify-center overflow-hidden">
+      <div className="relative hidden lg:flex lg:w-1/2 flex-col items-center justify-center overflow-hidden border-r border-white/[0.06]">
         {/* Glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.1)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.15)_0%,transparent_70%)]" />
 
         {/* Grid HUD lines */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage:
               'linear-gradient(rgba(139,92,246,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,.3) 1px, transparent 1px)',
@@ -43,7 +43,7 @@ export default function AuthLayout({
           return (
             <motion.div
               key={i}
-              className="absolute text-[#8B5CF6]/[0.12]"
+              className="absolute text-[#8B5CF6]/25"
               style={pos as React.CSSProperties}
               animate={{ y: [0, -12, 0], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 6, delay, repeat: Infinity, ease: 'easeInOut' }}
@@ -68,10 +68,10 @@ export default function AuthLayout({
             </span>
           </div>
 
-          <h2 className="font-display text-[28px] font-bold text-white mb-3 leading-tight">
+          <h2 className="font-display text-[28px] font-bold text-white mb-3 leading-tight drop-shadow-[0_0_24px_rgba(139,92,246,0.3)]">
             Sua produ&ccedil;&atilde;o criativa<br />come&ccedil;a aqui.
           </h2>
-          <p className="text-[15px] text-[#A0A0A0] leading-relaxed max-w-xs mx-auto">
+          <p className="text-[15px] text-zinc-300 leading-relaxed max-w-xs mx-auto">
             24 agentes de IA especializados para criadores de v&iacute;deo.
           </p>
         </motion.div>
@@ -82,7 +82,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right panel — form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center px-6 py-12">
+      <div className="flex w-full lg:w-1/2 items-center justify-center px-6 py-12 lg:pl-16 lg:pr-12">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
