@@ -15,9 +15,9 @@ const footerLinks = {
     { label: 'Carreiras (em breve)', href: '#' },
   ],
   Legal: [
-    { label: 'Privacidade (em breve)', href: '#' },
-    { label: 'Termos (em breve)', href: '#' },
-    { label: 'Cookies (em breve)', href: '#' },
+    { label: 'Privacidade', href: '#' },
+    { label: 'Termos', href: '#' },
+    { label: 'Cookies', href: '#' },
   ],
 };
 
@@ -43,7 +43,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm text-[#A0A0A0] leading-relaxed max-w-xs mb-6">
-              O app de IA para creators. Crie conteúdo profissional de vídeo com inteligência artificial.
+              O app de IA para creators. Crie conte&uacute;do profissional de v&iacute;deo com intelig&ecirc;ncia artificial.
             </p>
             {/* Social icons */}
             <div className="flex gap-3">
@@ -89,7 +89,7 @@ export default function Footer() {
         <div className="mb-12 flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-white/[0.06] bg-[#111111]/50 p-6">
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-white mb-1">Newsletter</h4>
-            <p className="text-xs text-[#666666]">Receba novidades e dicas de criação</p>
+            <p className="text-xs text-[#666666]">Receba novidades e dicas de cria&ccedil;&atilde;o</p>
           </div>
           <div className="flex w-full sm:w-auto gap-2">
             <input
@@ -112,7 +112,7 @@ export default function Footer() {
           <p className="text-[13px] text-[#666666]">
             Feito com{' '}
             <span className="text-[#8B5CF6]">&hearts;</span>{' '}
-            por Fábrica de Ideias
+            por F&aacute;brica de Ideias
           </p>
         </div>
       </div>

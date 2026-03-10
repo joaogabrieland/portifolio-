@@ -85,6 +85,16 @@ export default function HeroSection() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center">
+        {/* Top label */}
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="mb-6 text-center text-xs sm:text-sm font-medium uppercase tracking-[0.15em] text-[#A0A0A0]"
+        >
+          Fábrica de Ideias Academy apresenta
+        </motion.p>
+
         {/* Giant title FLOW with light sweep + glitch hover */}
         <motion.h1
           initial={{ opacity: 0, scale: 0.92 }}
