@@ -6,6 +6,14 @@ import { fetchClientData, saveClientData } from '@/lib/clients-api';
 // Global save queue — ensures unmount flushes complete before the next mount fetch
 const pendingSaves = new Map<string, Promise<void>>();
 
+// Global data cache — prevents redundant fetches across mount/unmount cycles
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dataCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60_000; // 60 seconds — data younger than this is served from cache
+
+// Track in-flight fetches to prevent duplicate concurrent requests
+const inflightFetches = new Map<string, Promise<unknown>>();
+
 function getSaveKey(clientId: string, dataType: string) {
   return `${clientId}:${dataType}`;
 }
@@ -14,7 +22,9 @@ function getSaveKey(clientId: string, dataType: string) {
  * Hook to load and persist per-client sub-data (kanban, agenda, etc.) via API.
  * Replaces direct localStorage read/write with debounced API calls.
  *
- * Fixes:
+ * Features:
+ * - Global data cache: re-mounting a component uses cached data instantly (no flash)
+ * - Deduplicates in-flight fetches: multiple hooks for same key share one request
  * - Waits for any pending save to complete before fetching on mount
  * - Properly handles empty arrays as valid data (not treated as "no data")
  * - Synchronous flush on unmount tracked globally to prevent race conditions
@@ -28,40 +38,70 @@ export function useClientData<T>(
   setData: (newData: T | ((prev: T) => T)) => void;
   loading: boolean;
 } {
-  const [data, setDataState] = useState<T>(fallback);
-  const [loading, setLoading] = useState(true);
+  const key = getSaveKey(clientId, dataType);
+
+  // Initialize from cache if available, otherwise use fallback
+  const cached = dataCache.get(key);
+  const initialData = (cached && cached.data !== undefined) ? cached.data as T : fallback;
+
+  const [data, setDataState] = useState<T>(initialData);
+  const [loading, setLoading] = useState(!cached); // not loading if cache hit
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestDataRef = useRef<T>(fallback);
+  const latestDataRef = useRef<T>(initialData);
   const hasSavedRef = useRef(false);
 
-  // Load data on mount — wait for any pending save first
+  // Load data on mount — use cache if fresh, otherwise fetch
   useEffect(() => {
-    const key = getSaveKey(clientId, dataType);
+    const currentKey = getSaveKey(clientId, dataType);
 
     let cancelled = false;
+
+    // Check cache freshness
+    const cachedEntry = dataCache.get(currentKey);
+    if (cachedEntry && (Date.now() - cachedEntry.timestamp) < CACHE_TTL) {
+      // Cache is fresh — use it, skip fetch
+      if (!hasSavedRef.current) {
+        setDataState(cachedEntry.data as T);
+        latestDataRef.current = cachedEntry.data as T;
+      }
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
     setLoading(true);
 
     const load = async () => {
       // Wait for any pending save from a previous unmount
-      const pending = pendingSaves.get(key);
+      const pending = pendingSaves.get(currentKey);
       if (pending) {
         await pending;
-        pendingSaves.delete(key);
+        pendingSaves.delete(currentKey);
       }
 
       try {
-        const result = await fetchClientData<T>(clientId, dataType);
+        // Deduplicate in-flight fetches for the same key
+        let fetchPromise = inflightFetches.get(currentKey);
+        if (!fetchPromise) {
+          fetchPromise = fetchClientData<T>(clientId, dataType);
+          inflightFetches.set(currentKey, fetchPromise);
+          fetchPromise.finally(() => {
+            // Only remove if this is still the active fetch
+            if (inflightFetches.get(currentKey) === fetchPromise) {
+              inflightFetches.delete(currentKey);
+            }
+          });
+        }
+
+        const result = await fetchPromise as T;
+
         if (!cancelled) {
-          // Accept any non-null/undefined result, including empty arrays
           if (result !== null && result !== undefined) {
-            // If the user has already made changes (hasSavedRef = true), the
-            // fetch result is stale relative to the user's optimistic update.
-            // Updating state or ref here would erase the user's change from
-            // both the UI and the pending debounced save.
             if (!hasSavedRef.current) {
               setDataState(result);
               latestDataRef.current = result;
             }
+            // Update global cache
+            dataCache.set(currentKey, { data: result, timestamp: Date.now() });
           }
           setLoading(false);
         }
@@ -76,7 +116,7 @@ export function useClientData<T>(
     return () => { cancelled = true; };
   }, [clientId, dataType]);
 
-  // setData: optimistic update + debounced API save
+  // setData: optimistic update + debounced API save + cache update
   const setData = useCallback(
     (newDataOrFn: T | ((prev: T) => T)) => {
       setDataState((prev) => {
@@ -87,18 +127,20 @@ export function useClientData<T>(
         latestDataRef.current = newData;
         hasSavedRef.current = true;
 
+        // Update global cache immediately on mutation
+        const currentKey = getSaveKey(clientId, dataType);
+        dataCache.set(currentKey, { data: newData, timestamp: Date.now() });
+
         // Debounce API write
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-          const key = getSaveKey(clientId, dataType);
           const savePromise = saveClientData(clientId, dataType, latestDataRef.current).catch((err) => {
             console.error(`useClientData(${dataType}) save error:`, err);
           });
-          pendingSaves.set(key, savePromise);
+          pendingSaves.set(currentKey, savePromise);
           savePromise.then(() => {
-            // Only delete if this is still the active save
-            if (pendingSaves.get(key) === savePromise) {
-              pendingSaves.delete(key);
+            if (pendingSaves.get(currentKey) === savePromise) {
+              pendingSaves.delete(currentKey);
             }
           });
         }, 300);
@@ -116,12 +158,12 @@ export function useClientData<T>(
         clearTimeout(debounceRef.current);
         // Only flush if data was actually modified
         if (hasSavedRef.current) {
-          const key = getSaveKey(clientId, dataType);
+          const currentKey = getSaveKey(clientId, dataType);
           const savePromise = saveClientData(clientId, dataType, latestDataRef.current).catch(() => {});
-          pendingSaves.set(key, savePromise);
+          pendingSaves.set(currentKey, savePromise);
           savePromise.then(() => {
-            if (pendingSaves.get(key) === savePromise) {
-              pendingSaves.delete(key);
+            if (pendingSaves.get(currentKey) === savePromise) {
+              pendingSaves.delete(currentKey);
             }
           });
         }

@@ -930,6 +930,26 @@ const ClientWorkflowTab: React.FC<{ client: Client }> = ({ client }) => {
   const [todoPriority, setTodoPriority] = useState<TodoPriority>('Média');
   const [showDone, setShowDone]         = useState(false);
 
+  // ── Roteiros (for pending workflow scripts) ──────────────
+  const { data: roteiroPkgs, setData: setRoteiroPkgs } = useClientData<ScriptPackage[]>(client.id, 'roteiros', []);
+
+  // Scripts with workflow_status='pending' that haven't been sent to kanban yet
+  const pendingWorkflowScripts = useMemo(() => {
+    const scripts: { pkgId: string; script: ScriptDocument }[] = [];
+    const collectPending = (pkgs: ScriptPackage[]) => {
+      for (const pkg of pkgs) {
+        for (const s of pkg.scripts) {
+          if (s.workflow_status === 'pending' && !s.inWorkflow) {
+            scripts.push({ pkgId: pkg.id, script: s });
+          }
+        }
+        if (pkg.subFolders) collectPending(pkg.subFolders);
+      }
+    };
+    if (Array.isArray(roteiroPkgs)) collectPending(roteiroPkgs);
+    return scripts;
+  }, [roteiroPkgs]);
+
   // ── Kanban state (persisted via API) ──────────────────────
   const { data: columns, setData: setColumns } = useClientData<KanbanColumn[]>(client.id, 'kanban', KANBAN_INITIAL_COLUMNS);
   const [addingToCol, setAddingToCol]           = useState<string | null>(null);
@@ -1118,9 +1138,63 @@ const ClientWorkflowTab: React.FC<{ client: Client }> = ({ client }) => {
     setColumns(prev => prev.map(c => c.id === colId ? { ...c, isArchived: true } : c));
   };
 
+  // Send a pending-workflow script to the first kanban column
+  const sendPendingToKanban = (pkgId: string, script: ScriptDocument) => {
+    const newCard: KanbanCard = {
+      id: `script_${script.id}_${Date.now()}`,
+      title: script.title || 'Roteiro sem título',
+      priority: 'Normal',
+      startDate: '',
+      dueDate: '',
+      notes: 'Criado automaticamente a partir do roteiro.',
+      assignedTo: '',
+    };
+    setColumns(prev => prev.map((col, idx) =>
+      idx === 0 ? { ...col, cards: [...col.cards, newCard] } : col
+    ));
+    // Mark script as inWorkflow + in_progress
+    setRoteiroPkgs(prev => {
+      const update = (pkgs: ScriptPackage[]): ScriptPackage[] =>
+        pkgs.map(pkg => ({
+          ...pkg,
+          scripts: pkg.scripts.map(s =>
+            s.id === script.id ? { ...s, inWorkflow: true, workflow_status: 'in_progress' as const } : s
+          ),
+          subFolders: pkg.subFolders ? update(pkg.subFolders) : undefined,
+        }));
+      return update(prev);
+    });
+  };
+
   // ─────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-0">
+
+      {/* ── Pending Roteiros Banner ── */}
+      {pendingWorkflowScripts.length > 0 && (
+        <div className="bg-violet-950/30 border border-violet-800/40 rounded-2xl p-4 flex-shrink-0 animate-in fade-in duration-300">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-violet-400" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-violet-400">
+              Roteiros Pendentes ({pendingWorkflowScripts.length})
+            </h3>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {pendingWorkflowScripts.map(({ pkgId, script }) => (
+              <button
+                key={script.id}
+                onClick={() => sendPendingToKanban(pkgId, script)}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-violet-600 text-left transition-all group"
+              >
+                <span className="text-sm text-zinc-200 font-bold truncate max-w-[180px]">{script.title}</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-400 border border-violet-700/40 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  Enviar
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Unified Archive Modal ── */}
       {showArchiveModal && (
@@ -2330,6 +2404,7 @@ interface ScriptDocument {
   sentToPortalAt?: number;
   rating?: number; // 1–5 stars from portal client
   inWorkflow?: boolean; // true when sent to the Kanban workflow
+  workflow_status?: 'pending' | 'in_progress' | 'done'; // tracks script in workflow pipeline
   // Soft delete
   isArchived?: boolean;
   archivedAt?: string; // ISO timestamp
@@ -2479,7 +2554,7 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
 
       setPackages(prev => prev.map(pkg =>
         pkg.id === pkgId
-          ? { ...pkg, scripts: pkg.scripts.map(s => s.id === script.id ? { ...s, inWorkflow: true } : s) }
+          ? { ...pkg, scripts: pkg.scripts.map(s => s.id === script.id ? { ...s, inWorkflow: true, workflow_status: 'in_progress' as const } : s) }
           : pkg
       ));
 
@@ -2582,6 +2657,7 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
       referenceLink: '', gancho: '', writingMode: 'structured', freeText: '',
       scenes: [{ id: crypto.randomUUID(), visual: '', audio: '', isChecked: false }],
       createdAt: Date.now(),
+      workflow_status: 'pending',
     };
     setPackages(prev => updatePkgDeep(prev, pkgId, p => ({ ...p, scripts: [s, ...p.scripts] })));
     setExpandedId(s.id);
@@ -6074,6 +6150,7 @@ Retorne APENAS JSON válido, sem markdown, no formato exato:
       gancho: idea.gancho,
       scenes,
       createdAt: Date.now(),
+      workflow_status: 'pending',
     };
 
     pkgs[0] = { ...pkgs[0], scripts: [newScript, ...pkgs[0].scripts] };
