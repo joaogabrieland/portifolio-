@@ -32,6 +32,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function AdminPage() {
   const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -43,13 +44,16 @@ export default function AdminPage() {
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   useEffect(() => {
+    if (!token) { router.replace('/login'); return; }
     (async () => {
       try {
         const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) { router.replace('/login'); return; }
         const data = await res.json();
         if (!data.user || data.user.email !== ADMIN_EMAIL) { router.replace('/dashboard'); return; }
+        setAuthorized(true);
         loadUsers();
-      } catch { router.replace('/dashboard'); }
+      } catch { router.replace('/login'); }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -94,6 +98,14 @@ export default function AdminPage() {
   };
 
   const INPUT = 'w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-zinc-500';
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-zinc-500 text-sm">Verificando acesso...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white">
