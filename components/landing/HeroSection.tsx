@@ -9,7 +9,7 @@ const Scene3D = dynamic(() => import('./Scene3D'), { ssr: false });
 
 export default function HeroSection() {
   return (
-    <section className="relative z-0 min-h-screen flex flex-col items-center justify-center overflow-hidden pt-28 pb-12 px-6">
+    <section className="relative z-0 isolate min-h-screen flex flex-col items-center justify-center overflow-hidden pt-28 pb-12 px-6">
       {/* Three.js 3D background — hidden on mobile for performance */}
       <div className="hidden md:block">
         <Scene3D />

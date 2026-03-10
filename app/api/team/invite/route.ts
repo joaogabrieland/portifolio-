@@ -26,7 +26,19 @@ export async function GET(req: NextRequest) {
       )
     `);
 
-    // Check team member limit
+    // Check if user already has an invite token
+    const existing = await query(
+      'SELECT token FROM team_invites WHERE user_id = $1 LIMIT 1',
+      [decoded.userId]
+    );
+
+    if (existing.rows.length > 0) {
+      return NextResponse.json({
+        inviteUrl: `https://creatorflowia.com/invite/${existing.rows[0].token}`,
+      });
+    }
+
+    // Check team member limit before creating NEW token
     const planResult = await query(
       `SELECT s.plan FROM subscriptions s
        WHERE s.user_id = $1 AND s.status = 'active'
