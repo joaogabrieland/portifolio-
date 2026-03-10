@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Plus, X, FileText, LayoutGrid, Monitor, File, ExternalLink, Trash2 } from 'lucide-react';
+import { Plus, X, FileText, LayoutGrid, Monitor, File, ExternalLink, Trash2, Scroll, Loader2, Copy, Check, Download } from 'lucide-react';
 import type { ExecutiveProject, ProjectDocument, DocumentType } from '@/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -142,8 +142,97 @@ interface Props {
   onUpdate: (updated: ExecutiveProject) => void;
 }
 
+// ─── Contract Generation Modal ────────────────────────────────────────────────
+
+function ContractModal({ onClose }: { onClose: () => void }) {
+  const [clientName, setClientName] = useState('');
+  const [projectScope, setProjectScope] = useState('');
+  const [value, setValue] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('50% na assinatura, 50% na entrega');
+  const [contract, setContract] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    if (!clientName.trim() || !projectScope.trim()) { setError('Preencha o nome do cliente e o escopo.'); return; }
+    setLoading(true); setError(''); setContract('');
+    try {
+      const token = localStorage.getItem('cf_token') || '';
+      const res = await fetch('/api/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ clientName, projectScope, value, deadline, paymentTerms }),
+      });
+      if (!res.ok) throw new Error('Falha ao gerar contrato');
+      const data = await res.json();
+      setContract(data.contract);
+    } catch { setError('Erro ao gerar contrato. Tente novamente.'); }
+    setLoading(false);
+  };
+
+  const handleCopy = () => { navigator.clipboard.writeText(contract); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+  const handleDownload = () => {
+    const blob = new Blob([contract], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `Contrato_${clientName.replace(/\s+/g, '_')}.txt`; a.click();
+  };
+
+  const INPUT = 'w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-zinc-500';
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-zinc-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 pt-6 pb-4 flex-shrink-0 border-b border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Scroll className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-base font-bold text-white">Gerar Contrato</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-400"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {!contract ? (
+            <>
+              <div><label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">Nome do Cliente *</label><input className={INPUT} placeholder="Ex: Studio Criativo Ltda" value={clientName} onChange={e => setClientName(e.target.value)} /></div>
+              <div><label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">Escopo do Projeto *</label><textarea className={`${INPUT} min-h-[80px]`} placeholder="Descreva os serviços: produção de 4 vídeos, edição, etc." value={projectScope} onChange={e => setProjectScope(e.target.value)} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">Valor (R$)</label><input className={INPUT} placeholder="Ex: R$ 5.000,00" value={value} onChange={e => setValue(e.target.value)} /></div>
+                <div><label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">Prazo de Entrega</label><input className={INPUT} placeholder="Ex: 30 dias" value={deadline} onChange={e => setDeadline(e.target.value)} /></div>
+              </div>
+              <div><label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">Condições de Pagamento</label><input className={INPUT} value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} /></div>
+              {error && <p className="text-xs text-red-400 font-bold">{error}</p>}
+              <button onClick={generate} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando contrato...</> : <><Scroll className="w-4 h-4" /> Gerar Contrato com IA</>}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex gap-2 mb-2">
+                <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors">
+                  {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> Copiado!</> : <><Copy className="w-3.5 h-3.5" /> Copiar</>}
+                </button>
+                <button onClick={handleDownload} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors">
+                  <Download className="w-3.5 h-3.5" /> Baixar .txt
+                </button>
+                <button onClick={() => setContract('')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border border-zinc-700 text-zinc-400 hover:text-white transition-colors ml-auto">
+                  Gerar Novo
+                </button>
+              </div>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 max-h-[50vh] overflow-y-auto">
+                <pre className="text-xs text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{contract}</pre>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ExecutiveDocuments({ project, onUpdate }: Props) {
   const [showModal, setShowModal] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
   const documents = project.documents ?? [];
 
   const handleAdd = useCallback(
@@ -173,13 +262,22 @@ export default function ExecutiveDocuments({ project, onUpdate }: Props) {
               Links, contratos e referências do projeto.
             </p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar Link
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowContractModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              <Scroll className="w-4 h-4" />
+              Gerar Contrato
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar Link
+            </button>
+          </div>
         </div>
 
         {documents.length === 0 ? (
@@ -243,6 +341,9 @@ export default function ExecutiveDocuments({ project, onUpdate }: Props) {
 
       {showModal && (
         <AddDocModal onClose={() => setShowModal(false)} onSave={handleAdd} />
+      )}
+      {showContractModal && (
+        <ContractModal onClose={() => setShowContractModal(false)} />
       )}
     </div>
   );

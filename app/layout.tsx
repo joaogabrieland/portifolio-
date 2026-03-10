@@ -4,6 +4,10 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'CreatorFlow AI',
   description: 'Suite de produtividade com IA para criadores de conteúdo',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({

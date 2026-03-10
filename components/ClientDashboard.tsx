@@ -2385,6 +2385,7 @@ interface ScriptScene {
   audio: string;
   isChecked: boolean;
   storyboardUrl?: string;
+  storyboardText?: string;
   freeContent?: string;
 }
 
@@ -2735,22 +2736,29 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
     const structuredScenes = script.scenes.filter(sc => !sc.type || sc.type === 'scene' || sc.type === 'free_text');
     if (structuredScenes.length === 0) return;
     setGeneratingStoryboard(script.id);
-    await new Promise<void>(r => setTimeout(r, 1800));
-    let added = 0;
-    const updatedScenes = await Promise.all(script.scenes.map(async (sc) => {
-      if (sc.storyboardUrl) return sc;
-      added++;
-      const num = structuredScenes.findIndex(s => s.id === sc.id) + 1;
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
-        const prompt = `Storyboard cinematográfico cena ${num}: ${sc.visual || ''}. ${sc.audio ? 'Audio: ' + sc.audio : ''}. Ilustração profissional 16:9.`;
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['IMAGE','TEXT']}})});
-        const d = await res.json();
-        const p = d.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-        const storyboardUrl = p ? `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` : `https://placehold.co/400x225/1e1b4b/a78bfa?text=Erro+${num}`;
-        return { ...sc, storyboardUrl };
-      }));
-    setStoryboardUsed(prev => Math.min(prev + added, STORYBOARD_LIMIT));
-    updateScript(pkgId, { ...script, scenes: updatedScenes });
+    try {
+      const token = localStorage.getItem('cf_token') || '';
+      const res = await fetch('/api/storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          scriptTitle: script.title,
+          scenes: structuredScenes.map(sc => ({ id: sc.id, visual: sc.visual || '', audio: sc.audio || '' })),
+        }),
+      });
+      if (!res.ok) throw new Error('Storyboard API failed');
+      const data = await res.json();
+      const storyboards: { sceneId: string; description: string }[] = data.storyboards || [];
+      const descMap = new Map(storyboards.map(sb => [sb.sceneId, sb.description]));
+      const updatedScenes = script.scenes.map(sc => {
+        const desc = descMap.get(sc.id);
+        return desc ? { ...sc, storyboardText: desc } : sc;
+      });
+      setStoryboardUsed(prev => Math.min(prev + 1, STORYBOARD_LIMIT));
+      updateScript(pkgId, { ...script, scenes: updatedScenes });
+    } catch (err) {
+      console.error('Storyboard generation error:', err);
+    }
     setGeneratingStoryboard(null);
   };
 
@@ -3447,7 +3455,7 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                       )}
 
                       {/* ── Storyboard grid (global) ── */}
-                      {script.scenes.some(sc => sc.storyboardUrl) && (
+                      {script.scenes.some(sc => sc.storyboardUrl || sc.storyboardText) && (
                         <div>
                           <div className="flex items-center justify-between mb-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
@@ -3456,28 +3464,35 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                             <button
                               onClick={() => updateScript(selectedPkg.id, {
                                 ...script,
-                                scenes: script.scenes.map(sc => ({ ...sc, storyboardUrl: undefined })),
+                                scenes: script.scenes.map(sc => ({ ...sc, storyboardUrl: undefined, storyboardText: undefined })),
                               })}
                               className="text-[10px] font-bold text-zinc-400 hover:text-red-500 transition-colors"
                             >
                               Limpar Board
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {script.scenes
-                              .filter(sc => sc.storyboardUrl)
+                              .filter(sc => sc.storyboardUrl || sc.storyboardText)
                               .map((sc, i) => {
                                 const structuredIdx = script.scenes.filter(s => !s.type || s.type === 'scene').findIndex(s => s.id === sc.id);
                                 return (
                                   <div key={sc.id} className="rounded-xl overflow-hidden border border-indigo-800/50">
-                                    <img
-                                      src={sc.storyboardUrl}
-                                      alt={`Storyboard cena ${i + 1}`}
-                                      className="w-full h-auto object-cover"
-                                    />
-                                    <p className="px-2 py-1.5 text-[10px] font-black text-indigo-500 bg-indigo-900/20 uppercase tracking-wider">
-                                      Cena {structuredIdx + 1}
-                                    </p>
+                                    {sc.storyboardUrl && (
+                                      <img
+                                        src={sc.storyboardUrl}
+                                        alt={`Storyboard cena ${i + 1}`}
+                                        className="w-full h-auto object-cover"
+                                      />
+                                    )}
+                                    <div className="px-3 py-2.5 bg-indigo-900/20">
+                                      <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-1">
+                                        Cena {structuredIdx + 1}
+                                      </p>
+                                      {sc.storyboardText && (
+                                        <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line">{sc.storyboardText}</p>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })}
