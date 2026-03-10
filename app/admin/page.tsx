@@ -40,14 +40,15 @@ export default function AdminPage() {
   const [creating, setCreating] = useState(false);
   const [msg, setMsg] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') || '' : '';
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('cf_token') || '' : '';
+  const getHeaders = () => ({ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' });
 
   useEffect(() => {
-    if (!token) { router.replace('/login'); return; }
+    const tk = getToken();
+    if (!tk) { router.replace('/login'); return; }
     (async () => {
       try {
-        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${tk}` } });
         if (!res.ok) { router.replace('/login'); return; }
         const data = await res.json();
         if (!data.user || !ADMIN_EMAILS.includes(data.user.email)) { router.replace('/dashboard'); return; }
@@ -58,10 +59,14 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (retry = true) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/users', { headers });
+      const res = await fetch('/api/admin/users', { headers: getHeaders() });
+      if (res.status === 403 && retry) {
+        await new Promise(r => setTimeout(r, 500));
+        return loadUsers(false);
+      }
       const data = await res.json();
       setUsers(data.users || []);
     } catch { /* ignore */ }
@@ -72,7 +77,7 @@ export default function AdminPage() {
     if (!form.name || !form.email || !form.password) return;
     setCreating(true); setMsg('');
     try {
-      const res = await fetch('/api/admin/users', { method: 'POST', headers, body: JSON.stringify(form) });
+      const res = await fetch('/api/admin/users', { method: 'POST', headers: getHeaders(), body: JSON.stringify(form) });
       if (res.ok) { setMsg('Usuário criado!'); setForm({ name: '', email: '', password: '', plan: 'solo' }); loadUsers(); }
       else { const d = await res.json(); setMsg(d.error || 'Erro'); }
     } catch { setMsg('Erro de conexão'); }
@@ -80,13 +85,13 @@ export default function AdminPage() {
   };
 
   const updatePlan = async (userId: string, plan: string) => {
-    await fetch(`/api/admin/users/${userId}`, { method: 'PATCH', headers, body: JSON.stringify({ plan }) });
+    await fetch(`/api/admin/users/${userId}`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ plan }) });
     loadUsers();
   };
 
   const deactivate = async (userId: string) => {
     if (!confirm('Desativar este usuário?')) return;
-    await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers });
+    await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers: getHeaders() });
     loadUsers();
   };
 
