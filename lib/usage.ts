@@ -100,6 +100,52 @@ export async function incrementUsage(userId: string, feature: TrackableFeature, 
   );
 }
 
+// Get actual storage used by a user (stock assets + client videos) in bytes
+export async function getStorageUsed(userId: string): Promise<number> {
+  const stockResult = await query(
+    'SELECT COALESCE(SUM(size), 0) AS total FROM stock_assets WHERE user_id = $1',
+    [userId]
+  );
+  const videoResult = await query(
+    `SELECT COALESCE(SUM(cv.size), 0) AS total
+     FROM client_videos cv
+     JOIN team_invites ti ON cv.token = ti.token
+     WHERE ti.user_id = $1 AND cv.expires_at > NOW()`,
+    [userId]
+  );
+  return Number(stockResult.rows[0].total) + Number(videoResult.rows[0].total);
+}
+
+// Check if user can upload additionalBytes within their plan's storage limit
+export async function checkStorageLimit(userId: string, plan: PlanKey, additionalBytes: number): Promise<{
+  allowed: boolean;
+  usedBytes: number;
+  limitBytes: number;
+}> {
+  const planData = PLANS[plan];
+  const limitBytes = (planData.limits.storage as number) * 1024 * 1024 * 1024; // GB → bytes
+
+  if (limitBytes === 0) {
+    return { allowed: false, usedBytes: 0, limitBytes: 0 };
+  }
+
+  const usedBytes = await getStorageUsed(userId);
+  return {
+    allowed: usedBytes + additionalBytes <= limitBytes,
+    usedBytes,
+    limitBytes,
+  };
+}
+
+// Count team invites for a user
+export async function getTeamMemberCount(userId: string): Promise<number> {
+  const result = await query(
+    'SELECT COUNT(*) AS count FROM team_invites WHERE user_id = $1',
+    [userId]
+  );
+  return Number(result.rows[0].count);
+}
+
 // Get all usage for current month
 export async function getUsageSummary(userId: string, plan: PlanKey): Promise<{
   features: Record<string, { used: number; limit: number; remaining: number; percentage: number }>;
@@ -122,7 +168,7 @@ export async function getUsageSummary(userId: string, plan: PlanKey): Promise<{
   }
 
   const storageLimit = (planData.limits.storage as number) * 1024 * 1024 * 1024; // GB to bytes
-  const storageUsed = usage.storage_used_bytes || 0;
+  const storageUsed = await getStorageUsed(userId);
 
   return {
     features,

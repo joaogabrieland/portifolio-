@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { getTeamMemberCount } from '@/lib/usage';
+import { PLANS, PlanKey } from '@/lib/stripe';
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,16 +26,24 @@ export async function GET(req: NextRequest) {
       )
     `);
 
-    // Check if user already has an invite token
-    const existing = await query(
-      'SELECT token FROM team_invites WHERE user_id = $1 LIMIT 1',
+    // Check team member limit
+    const planResult = await query(
+      `SELECT s.plan FROM subscriptions s
+       WHERE s.user_id = $1 AND s.status = 'active'
+       ORDER BY s.created_at DESC LIMIT 1`,
       [decoded.userId]
     );
+    const userPlan = (planResult.rows[0]?.plan as PlanKey) || 'solo';
+    const limit = PLANS[userPlan].limits.teamMembers as number;
+    const currentCount = await getTeamMemberCount(decoded.userId);
 
-    if (existing.rows.length > 0) {
+    if (currentCount >= limit) {
       return NextResponse.json({
-        inviteUrl: `https://creatorflowia.com/invite/${existing.rows[0].token}`,
-      });
+        error: 'Limite de membros da equipe atingido',
+        limit,
+        current: currentCount,
+        upgradeUrl: '/dashboard/pricing',
+      }, { status: 403 });
     }
 
     // Generate new invite token

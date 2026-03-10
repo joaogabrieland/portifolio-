@@ -360,6 +360,13 @@ const CreatorStockView: React.FC<CreatorStockViewProps> = ({ onBack }) => {
   const [showUpload,    setShowUpload]    = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
+  // Storage limit error state
+  const [storageLimitError, setStorageLimitError] = useState<{
+    message: string;
+    limit: number;
+    current: number;
+  } | null>(null);
+
   // Audio playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -418,6 +425,13 @@ const CreatorStockView: React.FC<CreatorStockViewProps> = ({ onBack }) => {
         setUploadTags('');
         setShowUpload(false);
         showToast('Arquivo enviado com sucesso!');
+      } else if (res.status === 403) {
+        const err = await res.json();
+        setStorageLimitError({
+          message: err.error,
+          limit: err.limit || 0,
+          current: err.current || 0,
+        });
       } else {
         const err = await res.json();
         showToast(err.error || 'Erro ao enviar arquivo');
@@ -684,6 +698,51 @@ const CreatorStockView: React.FC<CreatorStockViewProps> = ({ onBack }) => {
       {toastMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-5 py-3 bg-gray-900 border border-emerald-500/30 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 whitespace-nowrap">
           <p className="text-sm font-bold text-emerald-300">{toastMsg}</p>
+        </div>
+      )}
+
+      {/* Storage Limit Modal */}
+      {storageLimitError && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-zinc-900 w-full max-w-md p-6 rounded-3xl shadow-2xl border border-zinc-800 animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center mb-4">
+                <Zap className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-black text-white mb-2">Limite de armazenamento</h3>
+              <p className="text-sm text-gray-400 mb-5">{storageLimitError.message}</p>
+
+              {storageLimitError.limit > 0 && (
+                <div className="w-full mb-5">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                    <span>{(storageLimitError.current / (1024 * 1024 * 1024)).toFixed(2)} GB usado</span>
+                    <span>{(storageLimitError.limit / (1024 * 1024 * 1024)).toFixed(0)} GB limite</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, Math.round((storageLimitError.current / storageLimitError.limit) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setStorageLimitError(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-700 text-gray-300 text-sm font-bold hover:bg-gray-800 transition-colors"
+                >
+                  Fechar
+                </button>
+                <button
+                  onClick={() => { window.location.href = '/dashboard/pricing'; }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Zap className="w-3.5 h-3.5" /> Fazer Upgrade
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

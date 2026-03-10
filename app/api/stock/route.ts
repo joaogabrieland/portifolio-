@@ -5,6 +5,8 @@ import crypto from 'crypto';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { checkStorageLimit } from '@/lib/usage';
+import { PlanKey } from '@/lib/stripe';
 
 const UPLOAD_DIR = process.env.STOCK_UPLOAD_DIR || '/data/stock';
 
@@ -86,6 +88,27 @@ export async function POST(req: NextRequest) {
     }
     if (file.size > 100 * 1024 * 1024) {
       return NextResponse.json({ error: 'Arquivo muito grande (máx 100MB)' }, { status: 400 });
+    }
+
+    // Check storage limit
+    const planResult = await query(
+      `SELECT s.plan FROM subscriptions s
+       WHERE s.user_id = $1 AND s.status = 'active'
+       ORDER BY s.created_at DESC LIMIT 1`,
+      [decoded.userId]
+    );
+    const userPlan = (planResult.rows[0]?.plan as PlanKey) || 'solo';
+
+    const storageCheck = await checkStorageLimit(decoded.userId, userPlan, file.size);
+    if (!storageCheck.allowed) {
+      return NextResponse.json({
+        error: storageCheck.limitBytes === 0
+          ? 'Armazenamento não incluso no seu plano.'
+          : 'Limite de armazenamento atingido',
+        limit: storageCheck.limitBytes,
+        current: storageCheck.usedBytes,
+        upgradeUrl: '/dashboard/pricing',
+      }, { status: 403 });
     }
 
     const ext = path.extname(file.name) || '.mp3';

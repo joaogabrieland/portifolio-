@@ -1072,19 +1072,36 @@ export default function DashboardPage() {
               </button>
 
               {/* Assistente Executivo */}
-              <button
-                onClick={() => setIsAssistenteExecutivoOpen(true)}
-                className="group bg-gradient-to-b from-blue-900/20 to-transparent border border-blue-900/50 hover:border-blue-500/50 rounded-2xl p-6 flex flex-col items-start text-left transition-all duration-300 hover:bg-blue-900/10"
-              >
-                <div className="p-2.5 rounded-xl bg-blue-900/30 border border-blue-800/50 mb-4">
-                  <Briefcase className="w-5 h-5 text-blue-400" />
+              {userPlan === 'solo' ? (
+                <div className="relative bg-gradient-to-b from-blue-900/20 to-transparent border border-blue-900/50 rounded-2xl p-6 flex flex-col items-start text-left opacity-60 cursor-not-allowed">
+                  <div className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-gray-800 border border-gray-700 px-2 py-0.5 shadow z-10">
+                    <Lock className="w-2.5 h-2.5 text-gray-300" />
+                    <span className="text-[9px] font-bold text-gray-300">Maker+</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-blue-900/30 border border-blue-800/50 mb-4">
+                    <Briefcase className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1.5">Assistente Executivo</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed mb-4">Gerencie clientes, contratos, financeiro e toda a operação do seu negócio criativo.</p>
+                  <span className="mt-auto flex items-center gap-1.5 text-blue-400/50 text-xs font-bold">
+                    Acessar <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
-                <h3 className="text-base font-bold text-white mb-1.5">Assistente Executivo</h3>
-                <p className="text-sm text-gray-400 leading-relaxed mb-4">Gerencie clientes, contratos, financeiro e toda a operação do seu negócio criativo.</p>
-                <span className="mt-auto flex items-center gap-1.5 text-blue-400 text-xs font-bold group-hover:gap-2.5 transition-all">
-                  Acessar <ChevronRight className="w-3.5 h-3.5" />
-                </span>
-              </button>
+              ) : (
+                <button
+                  onClick={() => setIsAssistenteExecutivoOpen(true)}
+                  className="group bg-gradient-to-b from-blue-900/20 to-transparent border border-blue-900/50 hover:border-blue-500/50 rounded-2xl p-6 flex flex-col items-start text-left transition-all duration-300 hover:bg-blue-900/10"
+                >
+                  <div className="p-2.5 rounded-xl bg-blue-900/30 border border-blue-800/50 mb-4">
+                    <Briefcase className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-1.5">Assistente Executivo</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed mb-4">Gerencie clientes, contratos, financeiro e toda a operação do seu negócio criativo.</p>
+                  <span className="mt-auto flex items-center gap-1.5 text-blue-400 text-xs font-bold group-hover:gap-2.5 transition-all">
+                    Acessar <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              )}
 
               {/* Creator Stock */}
               <button
