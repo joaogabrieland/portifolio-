@@ -131,7 +131,7 @@ export default function PricingSection() {
   const inView = useInView(sectionRef, { once: true, margin: '-100px' });
 
   return (
-    <section id="precos" ref={sectionRef} className="relative py-24 px-6 lg:px-12 overflow-hidden">
+    <section id="precos" ref={sectionRef} className="relative py-24 px-6 lg:px-12">
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 bg-gradient-to-r from-transparent via-[#8B5CF6]/20 to-transparent" />
 
       <div className="mx-auto max-w-7xl">
