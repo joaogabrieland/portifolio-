@@ -22,12 +22,24 @@ export async function GET(req: NextRequest) {
       [decoded.userId]
     );
 
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'No active subscription' }, { status: 403 });
-    }
+    // Default to 'solo' plan when no active subscription
+    const plan = (result.rows[0]?.plan as PlanKey) || 'solo';
 
-    const plan = result.rows[0].plan as PlanKey;
-    const usage = await getUsageSummary(decoded.userId, plan);
+    let usage;
+    try {
+      usage = await getUsageSummary(decoded.userId, plan);
+    } catch (err) {
+      console.error('getUsageSummary error (returning safe defaults):', err);
+      usage = {
+        features: {
+          script_generator: { used: 0, limit: 0, remaining: 0, percentage: 0 },
+          proposals: { used: 0, limit: 0, remaining: 0, percentage: 0 },
+          image_analysis: { used: 0, limit: 0, remaining: 0, percentage: 0 },
+          storyboard: { used: 0, limit: 0, remaining: 0, percentage: 0 },
+        },
+        storage: { usedBytes: 0, limitBytes: 0, percentage: 0 },
+      };
+    }
 
     return NextResponse.json({
       plan,

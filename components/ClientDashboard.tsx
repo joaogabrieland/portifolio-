@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useClientData } from '@/lib/hooks/useClientData';
 import { useUserData } from '@/lib/hooks/useUserData';
 import { fetchClientData, saveClientData } from '@/lib/clients-api';
@@ -4101,160 +4101,135 @@ interface VisaoGeralData {
 const ClientVisaoGeralTab: React.FC<{ client: Client }> = ({ client }) => {
   const todayStr = getTodayStr();
 
-  const [data, setData] = useState<VisaoGeralData>({
-    awaitingClient: 0, teamBottleneck: 0, readyToRecord: 0,
-    riskScript: null, opportunityScript: null, nextRecordings: [],
-    radarFeedbacks: [], stageIdx: null, pinnedTitle: null, healthScore: 100,
-  });
+  // Use shared hooks instead of direct fetchClientData — eliminates duplicate requests
+  // and prevents data loss on tab switch (hooks persist state across mounts)
+  const { data: pkgs } = useClientData<ScriptPackage[]>(client.id, 'roteiros', []);
+  const { data: cols } = useClientData<KanbanColumn[]>(client.id, 'kanban', KANBAN_INITIAL_COLUMNS);
+  const { data: inv } = useClientData<Invoice[]>(client.id, 'invoices', []);
+  const { data: events } = useClientData<AgendaEvent[]>(client.id, 'agenda', []);
+  const { data: deliverables } = useClientData<Deliverable[]>(client.id, 'entregas', []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const data = useMemo<VisaoGeralData>(() => {
+    let awaitingClient    = 0;
+    let teamBottleneck    = 0;
+    let readyToRecord     = 0;
+    let riskScript:        VisaoGeralData['riskScript']        = null;
+    let opportunityScript: VisaoGeralData['opportunityScript'] = null;
+    let nextRecordings:    AgendaEvent[]   = [];
+    let radarFeedbacks:    VisaoGeralData['radarFeedbacks']    = [];
+    let allScripts:        ScriptDocument[] = [];
+    let stageIdx:          number | null    = null;
+    let pinnedTitle:       string | null    = null;
+    let healthScore        = 100;
 
-    const load = async () => {
-      let awaitingClient    = 0;
-      let teamBottleneck    = 0;
-      let readyToRecord     = 0;
-      let riskScript:        VisaoGeralData['riskScript']        = null;
-      let opportunityScript: VisaoGeralData['opportunityScript'] = null;
-      let nextRecordings:    AgendaEvent[]   = [];
-      let radarFeedbacks:    VisaoGeralData['radarFeedbacks']    = [];
-      let allScripts:        ScriptDocument[] = [];
-      let stageIdx:          number | null    = null;
-      let pinnedTitle:       string | null    = null;
-      let healthScore        = 100;
+    // ── Roteiros ────────────────────────────────
+    if (Array.isArray(pkgs) && pkgs.length > 0) {
+      allScripts     = pkgs.flatMap(p => p.scripts);
+      awaitingClient = allScripts.filter(sc => sc.portalStatus === 'aguardando_cliente').length;
+      const topRated = allScripts.find(sc => sc.rating === 5);
+      if (topRated) opportunityScript = { title: topRated.title };
+      const scriptFbs = allScripts
+        .filter(sc => (sc.rating ?? 0) > 0)
+        .sort((a, b) => (b.sentToPortalAt ?? 0) - (a.sentToPortalAt ?? 0))
+        .slice(0, 3)
+        .map(sc => ({ title: sc.title, rating: sc.rating!, type: 'script' as const }));
+      radarFeedbacks.push(...scriptFbs);
 
-      // ── Roteiros ────────────────────────────────
-      try {
-        const pkgs = await fetchClientData<ScriptPackage[]>(client.id, 'roteiros');
-        if (Array.isArray(pkgs)) {
-          allScripts     = pkgs.flatMap(p => p.scripts);
-          awaitingClient = allScripts.filter(sc => sc.portalStatus === 'aguardando_cliente').length;
-          const topRated = allScripts.find(sc => sc.rating === 5);
-          if (topRated) opportunityScript = { title: topRated.title };
-          const scriptFbs = allScripts
-            .filter(sc => (sc.rating ?? 0) > 0)
-            .sort((a, b) => (b.sentToPortalAt ?? 0) - (a.sentToPortalAt ?? 0))
-            .slice(0, 3)
-            .map(sc => ({ title: sc.title, rating: sc.rating!, type: 'script' as const }));
-          radarFeedbacks.push(...scriptFbs);
-
-          // ── Pinned package → Timeline stage ─────
-          const findPinned = (list: ScriptPackage[]): ScriptPackage | null => {
-            for (const p of list) {
-              if (p.isPinnedToTimeline) return p;
-              if (p.subFolders) { const found = findPinned(p.subFolders); if (found) return found; }
-            }
-            return null;
-          };
-          const pinned = findPinned(pkgs);
-          if (pinned) {
-            pinnedTitle = pinned.title;
-            const sc = pinned.scripts;
-            if (sc.length === 0) {
-              stageIdx = 0; // Briefing
-            } else {
-              const allGravado    = sc.every(r => r.status === 'Gravado');
-              const hasGravado    = sc.some(r => r.status === 'Gravado');
-              const hasAprovado   = sc.some(r => r.portalStatus === 'aprovado_cliente' || r.status === 'Aprovado');
-              const hasAguardando = sc.some(r => r.portalStatus === 'aguardando_cliente');
-              if      (allGravado)    stageIdx = 5;
-              else if (hasGravado)    stageIdx = 4;
-              else if (hasAprovado)   stageIdx = 3;
-              else if (hasAguardando) stageIdx = 2;
-              else                    stageIdx = 1;
-            }
-          }
+      // ── Pinned package → Timeline stage ─────
+      const findPinned = (list: ScriptPackage[]): ScriptPackage | null => {
+        for (const p of list) {
+          if (p.isPinnedToTimeline) return p;
+          if (p.subFolders) { const found = findPinned(p.subFolders); if (found) return found; }
         }
-      } catch { /* ignore */ }
-
-      // ── Kanban + auto-stage + health ─────────────
-      try {
-        const cols = await fetchClientData<KanbanColumn[]>(client.id, 'kanban');
-        if (Array.isArray(cols)) {
-          const today = new Date();
-          const bottleneckCards = cols
-            .filter(c => c.id === 'preproducao' || c.id === 'gravar')
-            .flatMap(c => c.cards);
-          const overdueCards = cols
-            .filter(c => c.id !== 'finalizado')
-            .flatMap(c => c.cards)
-            .filter(card => card.dueDate && new Date(card.dueDate) < today);
-          const combined = new Set([...bottleneckCards.map(c => c.id), ...overdueCards.map(c => c.id)]);
-          teamBottleneck = combined.size;
-
-          // Auto-calculate production stage from most-advanced column with cards
-          for (const col of cols) {
-            if (col.cards.length > 0) {
-              const colStage = COLUMN_STAGE_MAP[col.id] ?? 0;
-              if (colStage > (stageIdx ?? -1)) stageIdx = colStage;
-            }
-          }
-
-          // Health: overdue kanban cards penalise score
-          healthScore -= Math.min(overdueCards.length * 20, 60);
+        return null;
+      };
+      const pinned = findPinned(pkgs);
+      if (pinned) {
+        pinnedTitle = pinned.title;
+        const sc = pinned.scripts;
+        if (sc.length === 0) {
+          stageIdx = 0; // Briefing
+        } else {
+          const allGravado    = sc.every(r => r.status === 'Gravado');
+          const hasGravado    = sc.some(r => r.status === 'Gravado');
+          const hasAprovado   = sc.some(r => r.portalStatus === 'aprovado_cliente' || r.status === 'Aprovado');
+          const hasAguardando = sc.some(r => r.portalStatus === 'aguardando_cliente');
+          if      (allGravado)    stageIdx = 5;
+          else if (hasGravado)    stageIdx = 4;
+          else if (hasAprovado)   stageIdx = 3;
+          else if (hasAguardando) stageIdx = 2;
+          else                    stageIdx = 1;
         }
-      } catch { /* ignore */ }
-
-      // ── Health: overdue invoices ─────────────────
-      try {
-        const inv = await fetchClientData<Invoice[]>(client.id, 'invoices');
-        if (Array.isArray(inv)) {
-          const overdueInv = inv.filter(i => i.status === 'atrasado').length;
-          healthScore -= Math.min(overdueInv * 25, 50);
-        }
-      } catch { /* ignore */ }
-
-      // Health: scripts awaiting approval
-      healthScore -= Math.min(awaitingClient * 10, 30);
-      healthScore = Math.max(0, Math.min(100, healthScore));
-
-      // ── Agenda ──────────────────────────────────
-      try {
-        const events = await fetchClientData<AgendaEvent[]>(client.id, 'agenda');
-        if (Array.isArray(events)) {
-          const futureRecs = events
-            .filter(e => e.type === 'Gravação' && e.date >= todayStr)
-            .sort((a, b) => a.date.localeCompare(b.date));
-          nextRecordings = futureRecs.slice(0, 3);
-
-          const threeDaysLater = new Date();
-          threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-          const threeDaysStr = threeDaysLater.toISOString().split('T')[0];
-          const urgentRec = futureRecs.find(e => e.date <= threeDaysStr);
-          if (urgentRec) {
-            const hasApproved = allScripts.some(sc => sc.portalStatus === 'aprovado_cliente');
-            if (!hasApproved) riskScript = { title: urgentRec.title, recordingDate: urgentRec.date };
-          }
-        }
-      } catch { /* ignore */ }
-
-      const approvedCount = allScripts.filter(sc => sc.portalStatus === 'aprovado_cliente').length;
-      readyToRecord = nextRecordings.length > 0 ? 0 : approvedCount;
-
-      // ── Entregas (radar) ─────────────────────────
-      try {
-        interface _D { title: string; rating?: number; feedback?: string; sentAt: number; }
-        const deliverables = await fetchClientData<_D[]>(client.id, 'entregas');
-        if (Array.isArray(deliverables)) {
-          const withRating = deliverables
-            .filter(d => (d.rating ?? 0) > 0)
-            .sort((a, b) => b.sentAt - a.sentAt)
-            .slice(0, 2)
-            .map(d => ({ title: d.title, rating: d.rating!, feedback: d.feedback, type: 'deliverable' as const }));
-          radarFeedbacks.push(...withRating);
-        }
-      } catch { /* ignore */ }
-
-      radarFeedbacks = radarFeedbacks.slice(0, 3);
-
-      if (!cancelled) {
-        setData({ awaitingClient, teamBottleneck, readyToRecord, riskScript, opportunityScript, nextRecordings, radarFeedbacks, stageIdx, pinnedTitle, healthScore });
       }
-    };
+    }
 
-    load();
-    return () => { cancelled = true; };
-  }, [client.id, todayStr]);
+    // ── Kanban + auto-stage + health ─────────────
+    if (Array.isArray(cols) && cols.length > 0) {
+      const today = new Date();
+      const bottleneckCards = cols
+        .filter(c => c.id === 'preproducao' || c.id === 'gravar')
+        .flatMap(c => c.cards);
+      const overdueCards = cols
+        .filter(c => c.id !== 'finalizado')
+        .flatMap(c => c.cards)
+        .filter(card => card.dueDate && new Date(card.dueDate) < today);
+      const combined = new Set([...bottleneckCards.map(c => c.id), ...overdueCards.map(c => c.id)]);
+      teamBottleneck = combined.size;
+
+      for (const col of cols) {
+        if (col.cards.length > 0) {
+          const colStage = COLUMN_STAGE_MAP[col.id] ?? 0;
+          if (colStage > (stageIdx ?? -1)) stageIdx = colStage;
+        }
+      }
+
+      healthScore -= Math.min(overdueCards.length * 20, 60);
+    }
+
+    // ── Health: overdue invoices ─────────────────
+    if (Array.isArray(inv) && inv.length > 0) {
+      const overdueInv = inv.filter(i => i.status === 'atrasado').length;
+      healthScore -= Math.min(overdueInv * 25, 50);
+    }
+
+    // Health: scripts awaiting approval
+    healthScore -= Math.min(awaitingClient * 10, 30);
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    // ── Agenda ──────────────────────────────────
+    if (Array.isArray(events) && events.length > 0) {
+      const futureRecs = events
+        .filter(e => e.type === 'Gravação' && e.date >= todayStr)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      nextRecordings = futureRecs.slice(0, 3);
+
+      const threeDaysLater = new Date();
+      threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+      const threeDaysStr = threeDaysLater.toISOString().split('T')[0];
+      const urgentRec = futureRecs.find(e => e.date <= threeDaysStr);
+      if (urgentRec) {
+        const hasApproved = allScripts.some(sc => sc.portalStatus === 'aprovado_cliente');
+        if (!hasApproved) riskScript = { title: urgentRec.title, recordingDate: urgentRec.date };
+      }
+    }
+
+    const approvedCount = allScripts.filter(sc => sc.portalStatus === 'aprovado_cliente').length;
+    readyToRecord = nextRecordings.length > 0 ? 0 : approvedCount;
+
+    // ── Entregas (radar) ─────────────────────────
+    if (Array.isArray(deliverables) && deliverables.length > 0) {
+      const withRating = deliverables
+        .filter(d => (d.rating ?? 0) > 0)
+        .sort((a, b) => b.sentAt - a.sentAt)
+        .slice(0, 2)
+        .map(d => ({ title: d.title, rating: d.rating!, feedback: d.feedback, type: 'deliverable' as const }));
+      radarFeedbacks.push(...withRating);
+    }
+
+    radarFeedbacks = radarFeedbacks.slice(0, 3);
+
+    return { awaitingClient, teamBottleneck, readyToRecord, riskScript, opportunityScript, nextRecordings, radarFeedbacks, stageIdx, pinnedTitle, healthScore };
+  }, [pkgs, cols, inv, events, deliverables, todayStr]);
 
   const stageIdx    = data.stageIdx;         // null when no package is pinned
   const progressPct = stageIdx !== null

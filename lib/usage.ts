@@ -15,6 +15,22 @@ const FEATURE_TO_LIMIT: Record<TrackableFeature, keyof typeof PLANS.solo.limits>
 // Get or create current month's usage record
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getOrCreateUsage(userId: string): Promise<any> {
+  // Ensure table exists (safe for first-time users)
+  await query(`
+    CREATE TABLE IF NOT EXISTS usage (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      period_start DATE NOT NULL,
+      period_end DATE NOT NULL,
+      script_generator INT DEFAULT 0,
+      proposals INT DEFAULT 0,
+      image_analysis INT DEFAULT 0,
+      storyboard INT DEFAULT 0,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, period_start)
+    )
+  `);
+
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -102,18 +118,33 @@ export async function incrementUsage(userId: string, feature: TrackableFeature, 
 
 // Get actual storage used by a user (stock assets + client videos) in bytes
 export async function getStorageUsed(userId: string): Promise<number> {
-  const stockResult = await query(
-    'SELECT COALESCE(SUM(size), 0) AS total FROM stock_assets WHERE user_id = $1',
-    [userId]
-  );
-  const videoResult = await query(
-    `SELECT COALESCE(SUM(cv.size), 0) AS total
-     FROM client_videos cv
-     JOIN team_invites ti ON cv.token = ti.token
-     WHERE ti.user_id = $1 AND cv.expires_at > NOW()`,
-    [userId]
-  );
-  return Number(stockResult.rows[0].total) + Number(videoResult.rows[0].total);
+  let stockTotal = 0;
+  let videoTotal = 0;
+
+  try {
+    const stockResult = await query(
+      'SELECT COALESCE(SUM(size), 0) AS total FROM stock_assets WHERE user_id = $1',
+      [userId]
+    );
+    stockTotal = Number(stockResult.rows[0].total);
+  } catch {
+    // Table may not exist yet — return 0
+  }
+
+  try {
+    const videoResult = await query(
+      `SELECT COALESCE(SUM(cv.size), 0) AS total
+       FROM client_videos cv
+       JOIN team_invites ti ON cv.token = ti.token
+       WHERE ti.user_id = $1 AND cv.expires_at > NOW()`,
+      [userId]
+    );
+    videoTotal = Number(videoResult.rows[0].total);
+  } catch {
+    // Tables may not exist yet — return 0
+  }
+
+  return stockTotal + videoTotal;
 }
 
 // Check if user can upload additionalBytes within their plan's storage limit
