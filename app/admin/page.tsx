@@ -14,7 +14,7 @@ interface AdminUser {
   created_at: string;
 }
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'marcosvlogs12@gmail.com';
+const ADMIN_EMAILS = [process.env.NEXT_PUBLIC_ADMIN_EMAIL, 'marcosvlogs12@gmail.com', 'teste@creatorflowia.com'].filter(Boolean) as string[];
 
 const PLAN_BADGE: Record<string, string> = {
   solo: 'bg-zinc-700 text-zinc-300',
@@ -50,7 +50,7 @@ export default function AdminPage() {
         const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) { router.replace('/login'); return; }
         const data = await res.json();
-        if (!data.user || data.user.email !== ADMIN_EMAIL) { router.replace('/dashboard'); return; }
+        if (!data.user || !ADMIN_EMAILS.includes(data.user.email)) { router.replace('/dashboard'); return; }
         setAuthorized(true);
         loadUsers();
       } catch { router.replace('/login'); }

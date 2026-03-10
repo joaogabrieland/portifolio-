@@ -62,7 +62,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       .then((data) => {
         if (!data) return;
 
-        const isAdmin = data.user?.email === (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'marcosvlogs12@gmail.com');
+        const adminEmails = [process.env.NEXT_PUBLIC_ADMIN_EMAIL, 'marcosvlogs12@gmail.com', 'teste@creatorflowia.com'].filter(Boolean);
+        const isAdmin = adminEmails.includes(data.user?.email);
 
         if (!isAdmin && data.user?.subscriptionStatus !== 'active') {
           router.replace('/subscription-inactive');
