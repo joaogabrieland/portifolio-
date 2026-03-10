@@ -6,6 +6,7 @@ import {
   ArrowLeft, Plus, Users, Trash2, ChevronRight, AlertTriangle, Calendar,
   X, UserPlus, MoreVertical, Pencil, CheckCircle, Clock, Video, Globe,
   BarChart3, TrendingUp, AlertCircle, Activity, DollarSign, Layers, Zap, FileText,
+  Copy, Check, Link,
 } from 'lucide-react';
 import { Client } from '@/types';
 import ClientOnboardingModal from './ClientOnboardingModal';
@@ -243,19 +244,37 @@ interface TeamModalProps { isOpen: boolean; onClose: () => void; }
 
 const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
   const [members, setMembers]       = useState<TeamMember[]>(INITIAL_TEAM);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail]   = useState('');
-  const [inviteRole, setInviteRole]     = useState<MemberRole>('videomaker');
+  const [inviteUrl, setInviteUrl]       = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [showInviteLink, setShowInviteLink] = useState(false);
+  const [copied, setCopied]             = useState(false);
   const [inviteToast, setInviteToast]   = useState(false);
   const [openMenuId, setOpenMenuId]     = useState<string | null>(null);
   const [editingId, setEditingId]       = useState<string | null>(null);
 
-  const handleSendInvite = () => {
-    if (!inviteEmail.trim()) return;
-    setInviteEmail('');
-    setInviteRole('videomaker');
-    setIsInviteOpen(false);
+  const handleGenerateInvite = async () => {
+    setInviteLoading(true);
+    try {
+      const token = localStorage.getItem('cf_token');
+      const res = await fetch('/api/team/invite', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Falha ao gerar convite');
+      const data = await res.json();
+      setInviteUrl(data.inviteUrl);
+      setShowInviteLink(true);
+    } catch (err) {
+      console.error('Invite error:', err);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
     setInviteToast(true);
+    setTimeout(() => setCopied(false), 2000);
     setTimeout(() => setInviteToast(false), 3000);
   };
 
@@ -308,63 +327,49 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
           {inviteToast && (
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-900/20 border border-emerald-800/50 animate-in fade-in duration-200">
               <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-              <p className="text-xs font-bold text-emerald-300">✅ Convite enviado para o membro!</p>
+              <p className="text-xs font-bold text-emerald-300">Link copiado com sucesso!</p>
             </div>
           )}
 
-          {/* Invite trigger / form */}
-          {!isInviteOpen ? (
+          {/* Invite link */}
+          {!showInviteLink ? (
             <button
-              onClick={() => setIsInviteOpen(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-violet-700 text-violet-400 font-bold text-sm hover:bg-violet-900/20 transition-all"
+              onClick={handleGenerateInvite}
+              disabled={inviteLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-violet-700 text-violet-400 font-bold text-sm hover:bg-violet-900/20 transition-all disabled:opacity-50"
             >
-              <UserPlus className="w-4 h-4" /> + Convidar Membro
+              <UserPlus className="w-4 h-4" />
+              {inviteLoading ? 'Gerando...' : '+ Convidar Membro'}
             </button>
           ) : (
-            <div className="rounded-2xl border border-violet-800/50 bg-violet-900/10 p-5 space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5 space-y-4">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-black text-violet-400">Novo Convite</h3>
+                <div className="flex items-center gap-2">
+                  <Link className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-black text-white">Link de Convite</h3>
+                </div>
                 <button
-                  onClick={() => { setIsInviteOpen(false); setInviteEmail(''); }}
-                  className="p-1 hover:bg-violet-800/40 rounded-lg text-violet-400 transition-colors"
+                  onClick={() => setShowInviteLink(false)}
+                  className="p-1 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div>
-                <label className={LABEL_CLS}>E-mail do convite</label>
-                <input
-                  autoFocus
-                  type="email"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSendInvite(); }}
-                  placeholder="email@exemplo.com"
-                  className={INPUT_CLS}
-                />
-              </div>
+              <p className="text-xs text-zinc-400">Compartilhe este link para convidar um membro à sua equipe.</p>
 
-              <div>
-                <label className={LABEL_CLS}>Cargo / Nível de Acesso</label>
-                <select
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value as MemberRole)}
-                  className={SELECT_CLS}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 truncate">
+                  {inviteUrl}
+                </div>
+                <button
+                  onClick={handleCopyInvite}
+                  className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold transition-colors bg-white text-black hover:bg-gray-100"
                 >
-                  {ROLE_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copiado!' : 'Copiar'}
+                </button>
               </div>
-
-              <button
-                onClick={handleSendInvite}
-                disabled={!inviteEmail.trim()}
-                className="w-full py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-black text-sm shadow-md shadow-violet-500/20 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Enviar Convite
-              </button>
             </div>
           )}
 
