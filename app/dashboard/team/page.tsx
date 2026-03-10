@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Users, UserPlus, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, MessageCircle, Copy, Check, X, Link } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
 
 interface TeamMember {
@@ -55,6 +56,34 @@ const MOCK_TEAM: TeamMember[] = [
 
 export default function TeamPage() {
   const router = useRouter();
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleInvite() {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('cf_token');
+      const res = await fetch('/api/team/invite', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Falha ao gerar convite');
+      const data = await res.json();
+      setInviteUrl(data.inviteUrl);
+      setShowInviteModal(true);
+    } catch (err) {
+      console.error('Invite error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <AuthGuard>
@@ -84,9 +113,13 @@ export default function TeamPage() {
                 <p className="text-sm text-gray-500">{MOCK_TEAM.length} membros ativos</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors">
+            <button
+              onClick={handleInvite}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50"
+            >
               <UserPlus className="w-4 h-4" />
-              Convidar Membro
+              {loading ? 'Gerando...' : 'Convidar Membro'}
             </button>
           </div>
 
@@ -133,6 +166,45 @@ export default function TeamPage() {
           </div>
 
         </div>
+
+        {/* Invite Modal */}
+        {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+              {/* Modal header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Link className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-lg font-bold text-white">Link de Convite</h2>
+                </div>
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="p-1 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-400 mb-4">
+                Compartilhe este link para convidar um membro à sua equipe.
+              </p>
+
+              {/* URL + copy */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 truncate">
+                  {inviteUrl}
+                </div>
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold transition-colors bg-white text-black hover:bg-gray-100"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copiado!' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AuthGuard>
   );
