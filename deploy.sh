@@ -6,7 +6,7 @@ echo "$(date) — Pulling latest code..."
 git pull origin main
 
 echo "$(date) — Building..."
-docker compose build --no-cache
+docker compose build
 
 echo "$(date) — Deploying..."
 docker compose up -d
