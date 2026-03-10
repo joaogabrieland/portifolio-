@@ -2733,8 +2733,40 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
   // ── Storyboard generation ─────────────────────────────────────
   const generateStoryboard = async (pkgId: string, script: ScriptDocument) => {
     if (storyboardUsed >= STORYBOARD_LIMIT || generatingStoryboard) return;
-    const structuredScenes = script.scenes.filter(sc => !sc.type || sc.type === 'scene' || sc.type === 'free_text');
-    if (structuredScenes.length === 0) return;
+
+    // Try structured scenes first
+    let scenesToSend = script.scenes
+      .filter(sc => !sc.type || sc.type === 'scene' || sc.type === 'free_text')
+      .filter(sc => (sc.visual || '').trim() || (sc.audio || '').trim() || (sc.freeContent || '').trim());
+
+    // If no structured scenes with content, parse from freeText or scene freeContent
+    if (scenesToSend.length === 0) {
+      const rawText = script.freeText?.trim()
+        || script.scenes.map(sc => sc.freeContent || '').join('\n').trim()
+        || '';
+      if (!rawText) {
+        setWorkflowToast('Adicione um roteiro primeiro');
+        setTimeout(() => setWorkflowToast(''), 3000);
+        return;
+      }
+      // Split into paragraphs (double newline, numbered lines, or single non-empty lines)
+      const paragraphs = rawText
+        .split(/\n\s*\n|\n(?=\d+[\.\)\-]\s)/)
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+      if (paragraphs.length === 0) {
+        setWorkflowToast('Adicione um roteiro primeiro');
+        setTimeout(() => setWorkflowToast(''), 3000);
+        return;
+      }
+      scenesToSend = paragraphs.map((p, i) => ({
+        id: `scene-${i + 1}`,
+        visual: p,
+        audio: '',
+        isChecked: false,
+      }));
+    }
+
     setGeneratingStoryboard(script.id);
     try {
       const token = localStorage.getItem('cf_token') || '';
@@ -2743,21 +2775,40 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           scriptTitle: script.title,
-          scenes: structuredScenes.map(sc => ({ id: sc.id, visual: sc.visual || '', audio: sc.audio || '' })),
+          scenes: scenesToSend.map(sc => ({ id: sc.id, visual: sc.visual || sc.freeContent || '', audio: sc.audio || '' })),
         }),
       });
       if (!res.ok) throw new Error('Storyboard API failed');
       const data = await res.json();
       const storyboards: { sceneId: string; description: string }[] = data.storyboards || [];
       const descMap = new Map(storyboards.map(sb => [sb.sceneId, sb.description]));
-      const updatedScenes = script.scenes.map(sc => {
-        const desc = descMap.get(sc.id);
-        return desc ? { ...sc, storyboardText: desc } : sc;
-      });
+
+      // If we auto-generated scenes from plain text, create proper scene objects
+      const hasAutoScenes = scenesToSend.some(sc => sc.id.startsWith('scene-'));
+      let updatedScenes: ScriptScene[];
+      if (hasAutoScenes) {
+        updatedScenes = scenesToSend.map(sc => ({
+          id: sc.id,
+          visual: sc.visual,
+          audio: sc.audio,
+          isChecked: false,
+          storyboardText: descMap.get(sc.id) || undefined,
+        }));
+      } else {
+        updatedScenes = script.scenes.map(sc => {
+          const desc = descMap.get(sc.id);
+          return desc ? { ...sc, storyboardText: desc } : sc;
+        });
+      }
+
       setStoryboardUsed(prev => Math.min(prev + 1, STORYBOARD_LIMIT));
       updateScript(pkgId, { ...script, scenes: updatedScenes });
+      setWorkflowToast('Storyboard gerado com sucesso!');
+      setTimeout(() => setWorkflowToast(''), 3000);
     } catch (err) {
       console.error('Storyboard generation error:', err);
+      setWorkflowToast('Erro ao gerar storyboard. Tente novamente.');
+      setTimeout(() => setWorkflowToast(''), 4000);
     }
     setGeneratingStoryboard(null);
   };
@@ -3152,10 +3203,9 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                           }`}
                         >
                           {generatingStoryboard === script.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <ImageIcon className="w-3.5 h-3.5" />
+                            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Gerando...</>
+                            : <><ImageIcon className="w-3.5 h-3.5" /> Gerar Storyboard do Roteiro</>
                           }
-                          Gerar Storyboard do Roteiro
                         </button>
                         <span className="text-[10px] text-gray-400">
                           Storyboards:{' '}
