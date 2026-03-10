@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 const PUBLIC_ROUTES = ['/', '/login', '/signup', '/subscription-inactive'];
+const ADMIN_EMAILS = ['marcosvlogs12@gmail.com', 'teste@creatorflowia.com'];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,24 +19,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ── DEV BYPASS: passe livre total em desenvolvimento ──────────────────
+    // ── DEV BYPASS ──
     if (process.env.NODE_ENV === 'development') {
-      // Garante que as chaves necessárias para o dashboard existam
-      if (!localStorage.getItem('cf_token')) {
-        localStorage.setItem('cf_token', 'dev-token-bypass');
-      }
-      if (!localStorage.getItem('cf_name')) {
-        localStorage.setItem('cf_name', 'Dev User');
-      }
-      if (!localStorage.getItem('cf_email')) {
-        localStorage.setItem('cf_email', 'dev@creatorflow.local');
-      }
-      // Plano máximo para ter acesso a todos os recursos
+      if (!localStorage.getItem('cf_token')) localStorage.setItem('cf_token', 'dev-token-bypass');
+      if (!localStorage.getItem('cf_name')) localStorage.setItem('cf_name', 'Dev User');
+      if (!localStorage.getItem('cf_email')) localStorage.setItem('cf_email', 'dev@creatorflow.local');
       localStorage.setItem('cf_plan', 'agency');
       setChecked(true);
       return;
     }
-    // ─────────────────────────────────────────────────────────────────────
 
     const token = localStorage.getItem('cf_token');
     if (!token) {
@@ -43,13 +35,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Verify token + subscription with API
+    // Fetch user data — do NOT redirect until this resolves
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
         if (res.status === 401) {
-          // Token invalid/expired — clear and redirect
           localStorage.removeItem('cf_token');
           localStorage.removeItem('cf_email');
           localStorage.removeItem('cf_name');
@@ -60,20 +51,27 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         return res.json();
       })
       .then((data) => {
-        if (!data) return;
+        if (!data || !data.user) return;
 
-        const adminEmails = [process.env.NEXT_PUBLIC_ADMIN_EMAIL, 'marcosvlogs12@gmail.com', 'teste@creatorflowia.com'].filter(Boolean);
-        const isAdmin = adminEmails.includes(data.user?.email);
+        const email = data.user.email || '';
 
-        if (!isAdmin && data.user?.subscriptionStatus !== 'active') {
+        // Update local user data immediately
+        localStorage.setItem('cf_email', email);
+        localStorage.setItem('cf_name', data.user.name || '');
+        localStorage.setItem('cf_plan', data.user.plan || '');
+
+        // Admin bypass — NEVER check subscription for admin emails
+        if (ADMIN_EMAILS.includes(email)) {
+          setChecked(true);
+          return;
+        }
+
+        // Non-admin: check subscription
+        if (data.user.subscriptionStatus !== 'active') {
           router.replace('/subscription-inactive');
           return;
         }
 
-        // Update local user data
-        localStorage.setItem('cf_email', data.user.email);
-        localStorage.setItem('cf_name', data.user.name);
-        localStorage.setItem('cf_plan', data.user.plan || '');
         setChecked(true);
       })
       .catch(() => {
