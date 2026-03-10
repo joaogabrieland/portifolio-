@@ -168,9 +168,11 @@ export function middleware(request: NextRequest) {
       );
     }
 
-    // Reject oversized request bodies (50MB)
+    // Reject oversized request bodies (50MB general, 500MB for video uploads)
     const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
+    const isVideoUpload = pathname.match(/^\/api\/cliente\/[^/]+\/videos$/);
+    const maxSize = isVideoUpload ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (contentLength && parseInt(contentLength) > maxSize) {
       return NextResponse.json(
         { error: 'Requisição muito grande.' },
         { status: 413 }

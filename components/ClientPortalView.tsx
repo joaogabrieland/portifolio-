@@ -31,6 +31,8 @@ import {
   Phone,
   ExternalLink,
   Loader2,
+  Upload,
+  Clock,
 } from 'lucide-react';
 import { Client, Invoice } from '@/types';
 
@@ -789,6 +791,173 @@ const PortalRoteirosTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 // ─────────────────────────────────────────────
 // Videos / Materiais tab
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Video Upload Section (real API)
+// ─────────────────────────────────────────────
+interface UploadedVideo {
+  id: number;
+  filename: string;
+  original_name: string;
+  size: number;
+  status: string;
+  uploaded_at: string;
+  expires_at: string;
+}
+
+const VideoUploadSection: React.FC = () => {
+  const [inviteToken, setInviteToken] = useState('');
+  const [videos, setVideos] = useState<UploadedVideo[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [loadingVideos, setLoadingVideos] = useState(true);
+  const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const cfToken = localStorage.getItem('cf_token');
+        const inviteRes = await fetch('/api/team/invite', {
+          headers: { Authorization: `Bearer ${cfToken}` },
+        });
+        if (inviteRes.ok) {
+          const data = await inviteRes.json();
+          const urlToken = data.inviteUrl.split('/invite/')[1];
+          setInviteToken(urlToken);
+          const vidRes = await fetch(`/api/cliente/${urlToken}/videos`);
+          if (vidRes.ok) {
+            const vidData = await vidRes.json();
+            setVideos(vidData.videos || []);
+          }
+        }
+      } catch (err) {
+        console.error('Video init error:', err);
+      } finally {
+        setLoadingVideos(false);
+      }
+    }
+    init();
+  }, []);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !inviteToken) return;
+    setUploading(true);
+    setUploadProgress(`Enviando ${file.name}...`);
+    try {
+      const cfToken = localStorage.getItem('cf_token');
+      const formData = new FormData();
+      formData.append('video', file);
+      const res = await fetch(`/api/cliente/${inviteToken}/videos`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfToken}` },
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVideos(prev => [data.video, ...prev]);
+        setToast('Vídeo enviado para aprovação do cliente!');
+        setTimeout(() => setToast(''), 3000);
+      } else {
+        const err = await res.json();
+        setToast(err.error || 'Erro ao enviar vídeo');
+        setTimeout(() => setToast(''), 3000);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
+      e.target.value = '';
+    }
+  }
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function daysRemaining(expiresAt: string) {
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  function formatSize(bytes: number) {
+    if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / 1024).toFixed(0)} KB`;
+  }
+
+  const statusCfg: Record<string, { label: string; cls: string }> = {
+    pendente:  { label: 'Pendente',  cls: 'text-amber-300 bg-amber-500/15 border-amber-500/30' },
+    aprovado:  { label: 'Aprovado',  cls: 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30' },
+    rejeitado: { label: 'Rejeitado', cls: 'text-red-300 bg-red-500/15 border-red-500/30' },
+  };
+
+  return (
+    <div className="space-y-5 mb-8">
+      {/* Toast */}
+      {toast && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-900/20 border border-emerald-800/50">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+          <p className="text-xs font-bold text-emerald-300">{toast}</p>
+        </div>
+      )}
+
+      {/* Upload */}
+      <div className="rounded-2xl border border-gray-800/50 bg-gray-950/50 p-5 space-y-4">
+        <h3 className="text-sm font-black text-gray-300">Enviar Vídeo para Aprovação</h3>
+        <p className="text-xs text-gray-600">O vídeo ficará disponível por 7 dias no portal do cliente.</p>
+
+        <label className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-700 text-gray-400 font-bold text-sm hover:bg-gray-800/50 hover:border-gray-600 transition-all cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <Upload className="w-4 h-4" />
+          {uploading ? uploadProgress : 'Selecionar Vídeo'}
+          <input
+            type="file"
+            accept="video/*"
+            onChange={handleUpload}
+            className="hidden"
+            disabled={uploading || !inviteToken}
+          />
+        </label>
+      </div>
+
+      {/* Video list */}
+      {loadingVideos ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+        </div>
+      ) : videos.length > 0 && (
+        <div>
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-3">
+            Vídeos Enviados · {videos.length}
+          </h3>
+          <div className="space-y-2">
+            {videos.map(vid => {
+              const sc = statusCfg[vid.status] || statusCfg.pendente;
+              const days = daysRemaining(vid.expires_at);
+              return (
+                <div key={vid.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900/50 border border-gray-800/50">
+                  <Video className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-300 truncate">{vid.original_name}</p>
+                    <p className="text-[11px] text-gray-600">{formatSize(vid.size)} · {formatDate(vid.uploaded_at)}</p>
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${sc.cls}`}>
+                    {sc.label}
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-gray-600">
+                    <Clock className="w-3 h-3" /> {days}d
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PortalVideosTab: React.FC<{ clientId: string }> = ({ clientId }) => {
   const { data: deliverables, setData: setDeliverables } = useClientData<PortalDeliverable[]>(clientId, 'entregas', []);
   const [feedbackOpen, setFeedbackOpen]     = useState<string | null>(null);
@@ -828,16 +997,20 @@ const PortalVideosTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 
   if (deliverables.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in duration-200">
-        <div className="text-4xl mb-4">📦</div>
-        <h2 className="text-base font-black text-gray-400 mb-1">Nenhum material enviado</h2>
-        <p className="text-sm text-gray-600">Os materiais enviados pela equipe aparecerão aqui para revisão.</p>
+      <div className="animate-in fade-in duration-200">
+        <VideoUploadSection />
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-4xl mb-4">📦</div>
+          <h2 className="text-base font-black text-gray-400 mb-1">Nenhum material enviado</h2>
+          <p className="text-sm text-gray-600">Os materiais enviados pela equipe aparecerão aqui para revisão.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
+      <VideoUploadSection />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
