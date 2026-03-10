@@ -15,7 +15,7 @@ import CreatorStockView from '@/components/CreatorStockView';
 import ExecutiveAssistantView from '@/components/ExecutiveAssistantView';
 import StudioProfileModal from '@/components/StudioProfileModal';
 import AuthGuard from '@/components/auth/AuthGuard';
-import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2 } from 'lucide-react';
+import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield } from 'lucide-react';
 
 const STORAGE_KEY = 'creator_flow_history_v2';
 const PROFILES_KEY = 'creator_flow_ig_profiles';
@@ -236,11 +236,13 @@ export default function DashboardPage() {
   const [usageData, setUsageData] = useState<{ plan: string; features: Record<string, { used: number; limit: number; remaining: number; percentage: number }> } | null>(null);
   const [userPlan, setUserPlan] = useState('');
   const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     const plan = localStorage.getItem('cf_plan') || '';
     setUserPlan(plan);
     setUserName(localStorage.getItem('cf_name') || '');
+    setUserEmail(localStorage.getItem('cf_email') || '');
     const token = localStorage.getItem('cf_token');
     if (token) {
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
@@ -959,6 +961,15 @@ export default function DashboardPage() {
             </div>
             {/* Right: actions */}
             <div className="flex items-center gap-2">
+              {userEmail === (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'marcosvlogs12@gmail.com') && (
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-800/50 bg-emerald-900/20 text-emerald-300 text-xs font-bold hover:bg-emerald-900/30 transition-all"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Admin</span>
+                </button>
+              )}
               <button
                 onClick={() => setIsStudioModalOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-violet-800/50 bg-violet-900/20 text-violet-300 text-xs font-bold hover:bg-violet-900/30 transition-all"

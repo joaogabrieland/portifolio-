@@ -875,6 +875,23 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [hubView, setHubView]               = useState<'bi' | 'clientes'>('bi');
   const [alertsCache, setAlertsCache]       = useState<Record<string, ClientAlerts>>({});
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [portalToken, setPortalToken]       = useState('');
+  const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
+
+  // Fetch portal invite token once
+  useEffect(() => {
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.inviteUrl) {
+          const t = data.inviteUrl.split('/invite/')[1];
+          if (t) setPortalToken(t);
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
 
   // Load alerts for all clients from API
   useEffect(() => {
@@ -1135,6 +1152,23 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                       >
                         <Globe className="w-3.5 h-3.5" />
                       </button>
+                      {portalToken && (
+                        <button
+                          className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                            copiedClientId === client.id
+                              ? 'border-emerald-700 text-emerald-400 bg-emerald-900/20'
+                              : 'border-zinc-800 text-zinc-500 hover:border-emerald-700 hover:text-emerald-400'
+                          }`}
+                          onClick={() => {
+                            navigator.clipboard.writeText(`https://creatorflowia.com/cliente/${portalToken}`);
+                            setCopiedClientId(client.id);
+                            setTimeout(() => setCopiedClientId(null), 2000);
+                          }}
+                          title="Copiar link do portal"
+                        >
+                          {copiedClientId === client.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
