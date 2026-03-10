@@ -28,13 +28,16 @@ import {
   Copy,
   Menu,
   AlignLeft,
+  Phone,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { Client, Invoice } from '@/types';
 
 // ─────────────────────────────────────────────
 // Shared types
 // ─────────────────────────────────────────────
-type PortalTab   = 'dashboard' | 'roteiros' | 'videos' | 'reunioes' | 'financeiro';
+type PortalTab   = 'dashboard' | 'roteiros' | 'videos' | 'reunioes' | 'financeiro' | 'mensagens';
 type ReviewStatus = 'aguardando' | 'aprovado' | 'alteracao';
 
 const REVIEW_STATUS_CONFIG: Record<ReviewStatus, { label: string; badge: string }> = {
@@ -1290,6 +1293,187 @@ const _TabPlaceholder: React.FC = () => (
 );
 
 // ─────────────────────────────────────────────
+// Mensagens tab (WhatsApp + DB messages)
+// ─────────────────────────────────────────────
+interface PortalMessage {
+  id: number;
+  message: string;
+  created_at: string;
+}
+
+const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
+  const [inviteToken, setInviteToken] = useState('');
+  const [messages, setMessages] = useState<PortalMessage[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(true);
+  const [toast, setToast] = useState('');
+
+  // Fetch invite token + messages on mount
+  useEffect(() => {
+    async function init() {
+      try {
+        const cfToken = localStorage.getItem('cf_token');
+        // Get the producer's invite token
+        const inviteRes = await fetch('/api/team/invite', {
+          headers: { Authorization: `Bearer ${cfToken}` },
+        });
+        if (inviteRes.ok) {
+          const data = await inviteRes.json();
+          // Extract token from URL: https://creatorflowia.com/invite/{token}
+          const urlToken = data.inviteUrl.split('/invite/')[1];
+          setInviteToken(urlToken);
+          // Fetch existing messages
+          const msgRes = await fetch(`/api/cliente/${urlToken}/messages`);
+          if (msgRes.ok) {
+            const msgData = await msgRes.json();
+            setMessages(msgData.messages || []);
+          }
+        }
+      } catch (err) {
+        console.error('Mensagens init error:', err);
+      } finally {
+        setLoadingMessages(false);
+      }
+    }
+    init();
+  }, []);
+
+  async function handleSend() {
+    if (!newMessage.trim() || !inviteToken) return;
+    setSending(true);
+    try {
+      const cfToken = localStorage.getItem('cf_token');
+      const res = await fetch(`/api/cliente/${inviteToken}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cfToken}`,
+        },
+        body: JSON.stringify({ message: newMessage.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [data.message, ...prev]);
+        setToast('Mensagem salva no portal do cliente!');
+        setTimeout(() => setToast(''), 3000);
+
+        // Also open WhatsApp if number is provided
+        if (whatsappNumber.trim()) {
+          const phone = whatsappNumber.replace(/\D/g, '');
+          const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(newMessage.trim())}`;
+          window.open(waUrl, '_blank');
+        }
+        setNewMessage('');
+      }
+    } catch (err) {
+      console.error('Send message error:', err);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Toast */}
+      {toast && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-900/20 border border-emerald-800/50">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+          <p className="text-xs font-bold text-emerald-300">{toast}</p>
+        </div>
+      )}
+
+      {/* Compose */}
+      <div className="rounded-2xl border border-gray-800/50 bg-gray-950/50 p-5 space-y-4">
+        <h3 className="text-sm font-black text-gray-300">Enviar Aviso ao Cliente</h3>
+
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
+            WhatsApp do cliente (opcional)
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 font-bold">+55</span>
+            <input
+              type="tel"
+              value={whatsappNumber}
+              onChange={e => setWhatsappNumber(e.target.value)}
+              placeholder="11999998888"
+              className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-gray-600 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
+            Mensagem
+          </label>
+          <textarea
+            value={newMessage}
+            onChange={e => setNewMessage(e.target.value)}
+            placeholder="Escreva a mensagem para o cliente..."
+            rows={3}
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-gray-600 transition-colors resize-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSend}
+            disabled={!newMessage.trim() || sending}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="w-4 h-4" />
+            {sending ? 'Enviando...' : 'Enviar'}
+          </button>
+          {whatsappNumber.trim() && (
+            <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+              <Phone className="w-3 h-3" />
+              Também abre no WhatsApp
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Messages list */}
+      <div>
+        <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-3">
+          Mensagens Enviadas · {messages.length}
+        </h3>
+
+        {loadingMessages ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <MessageSquare className="w-8 h-8 text-gray-800 mb-3" />
+            <p className="text-sm text-gray-600">Nenhuma mensagem enviada ainda.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map(msg => (
+              <div
+                key={msg.id}
+                className="px-4 py-3 rounded-xl bg-gray-900/50 border border-gray-800/50"
+              >
+                <p className="text-sm text-gray-300 whitespace-pre-wrap">{msg.message}</p>
+                <p className="text-[11px] text-gray-600 mt-2">{formatDate(msg.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Portal nav tabs config
 // ─────────────────────────────────────────────
 const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -1298,6 +1482,7 @@ const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ComponentType<{ c
   { id: 'videos',     label: 'Vídeos',     icon: Video },
   { id: 'reunioes',   label: 'Reuniões',   icon: Users },
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+  { id: 'mensagens',  label: 'Mensagens',  icon: MessageSquare },
 ];
 
 // ─────────────────────────────────────────────
@@ -1439,6 +1624,7 @@ const ClientPortalView: React.FC<ClientPortalViewProps> = ({ client, onBack }) =
             {activeTab === 'videos'     && <PortalVideosTab    clientId={client.id} />}
             {activeTab === 'reunioes'   && <PortalReunioeTab   clientId={client.id} />}
             {activeTab === 'financeiro' && <PortalFinanceiroTab clientId={client.id} />}
+            {activeTab === 'mensagens'  && <PortalMensagensTab  clientId={client.id} />}
 
           </div>
         </main>
