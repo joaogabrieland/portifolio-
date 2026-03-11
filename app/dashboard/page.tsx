@@ -212,6 +212,9 @@ export default function DashboardPage() {
   // Share link copied toast
   const [showLinkCopied, setShowLinkCopied] = useState(false);
 
+  // Portal token for share button (client portal link)
+  const [dashboardPortalToken, setDashboardPortalToken] = useState('');
+
   // Client deleted toast
   const [deletedClientName, setDeletedClientName] = useState<string | null>(null);
 
@@ -250,14 +253,16 @@ export default function DashboardPage() {
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })
         .catch(() => { /* ignore */ });
-      // Fetch fresh user data (email may not be in localStorage yet)
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      // User data (email, name, plan) is already fetched by AuthGuard via /api/auth/me
+      // and stored in localStorage. No duplicate call needed here — just read from storage above.
+
+      // Fetch portal token for the share button (client portal link)
+      fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data?.user) {
-            setUserEmail(data.user.email || '');
-            setUserName(data.user.name || '');
-            setUserPlan(data.user.plan || '');
+          if (data?.inviteUrl) {
+            const t = data.inviteUrl.split('/invite/')[1];
+            if (t) setDashboardPortalToken(t);
           }
         })
         .catch(() => { /* ignore */ });
@@ -607,7 +612,10 @@ export default function DashboardPage() {
 
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const link = dashboardPortalToken
+        ? `https://creatorflowia.com/cliente/${dashboardPortalToken}`
+        : window.location.href;
+      await navigator.clipboard.writeText(link);
       setShowLinkCopied(true);
       setTimeout(() => setShowLinkCopied(false), 2500);
     } catch {
