@@ -2734,46 +2734,46 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
   const generateStoryboard = async (pkgId: string, script: ScriptDocument) => {
     if (storyboardUsed >= STORYBOARD_LIMIT || generatingStoryboard) return;
 
-    // Try structured scenes first
-    let scenesToSend = script.scenes
-      .filter(sc => !sc.type || sc.type === 'scene' || sc.type === 'free_text')
-      .filter(sc => (sc.visual || '').trim() || (sc.audio || '').trim() || (sc.freeContent || '').trim());
-
-    // If no structured scenes with content, parse from freeText or scene freeContent
-    if (scenesToSend.length === 0) {
-      const rawText = script.freeText?.trim()
-        || script.scenes.map(sc => sc.freeContent || '').join('\n').trim()
-        || '';
-      if (!rawText) {
-        setWorkflowToast('Adicione um roteiro primeiro');
-        setTimeout(() => setWorkflowToast(''), 3000);
-        return;
-      }
-      // Split into paragraphs (double newline, numbered lines, or single non-empty lines)
-      const paragraphs = rawText
-        .split(/\n\s*\n|\n(?=\d+[\.\)\-]\s)/)
-        .map(p => p.trim())
-        .filter(p => p.length > 0);
-      if (paragraphs.length === 0) {
-        setWorkflowToast('Adicione um roteiro primeiro');
-        setTimeout(() => setWorkflowToast(''), 3000);
-        return;
-      }
-      scenesToSend = paragraphs.map((p, i) => ({
-        id: `scene-${i + 1}`,
-        visual: p,
-        audio: '',
-        isChecked: false,
-      }));
-    }
-
     setGeneratingStoryboard(script.id);
     try {
+      // Try structured scenes first
+      let scenesToSend = script.scenes
+        .filter(sc => !sc.type || sc.type === 'scene' || sc.type === 'free_text')
+        .filter(sc => (sc.visual || '').trim() || (sc.audio || '').trim() || (sc.freeContent || '').trim());
+
+      // If no structured scenes with content, parse from freeText or scene content
+      if (scenesToSend.length === 0) {
+        const rawText =
+          script.freeText?.trim() ||
+          script.scenes.map(sc => sc.freeContent || sc.visual || '').join('\n').trim() ||
+          '';
+        if (!rawText) {
+          setWorkflowToast('Adicione um roteiro primeiro');
+          setTimeout(() => setWorkflowToast(''), 3000);
+          return;
+        }
+        // Split by newlines, keep any line with 4+ chars
+        const paragraphs = rawText
+          .split(/\n/)
+          .map(p => p.trim())
+          .filter(p => p.length > 3);
+        if (paragraphs.length === 0) {
+          setWorkflowToast('Adicione um roteiro primeiro');
+          setTimeout(() => setWorkflowToast(''), 3000);
+          return;
+        }
+        scenesToSend = paragraphs.map((p, i) => ({
+          id: `scene-${i + 1}`,
+          visual: p,
+          audio: '',
+          isChecked: false,
+        }));
+      }
+
       const token = localStorage.getItem('cf_token') || '';
       if (!token) {
         setWorkflowToast('Sessão expirada. Faça login novamente.');
         setTimeout(() => setWorkflowToast(''), 4000);
-        setGeneratingStoryboard(null);
         return;
       }
       const res = await fetch('/api/storyboard', {
@@ -2787,7 +2787,6 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
       if (res.status === 401) {
         setWorkflowToast('Sessão expirada. Faça login novamente.');
         setTimeout(() => setWorkflowToast(''), 4000);
-        setGeneratingStoryboard(null);
         return;
       }
       if (!res.ok) throw new Error('Storyboard API failed');
@@ -2821,8 +2820,9 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
       console.error('Storyboard generation error:', err);
       setWorkflowToast('Erro ao gerar storyboard. Tente novamente.');
       setTimeout(() => setWorkflowToast(''), 4000);
+    } finally {
+      setGeneratingStoryboard(null);
     }
-    setGeneratingStoryboard(null);
   };
 
   // ── Sidebar tree renderer ─────────────────────────────────────
