@@ -45,20 +45,44 @@ ${scenesText}
 Responda em JSON válido com o formato: {"storyboards": [{"sceneId": "id_da_cena", "description": "descrição detalhada do storyboard"}]}
 Use exatamente os IDs das cenas: ${scenes.map(s => s.id).join(', ')}`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7 },
-        }),
-      }
-    );
+    let geminiRes: Response;
+    try {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7 },
+          }),
+        }
+      );
+    } catch (fetchErr) {
+      console.error('Storyboard Gemini fetch error:', fetchErr);
+      return NextResponse.json({ error: 'Failed to connect to AI service', details: String(fetchErr) }, { status: 502 });
+    }
 
-    const data = await res.json();
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      console.error('Storyboard Gemini API error:', JSON.stringify(data, null, 2));
+      return NextResponse.json(
+        { error: 'AI service error', status: geminiRes.status, details: data.error?.message || JSON.stringify(data) },
+        { status: 502 }
+      );
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!text) {
+      console.error('Storyboard Gemini empty response:', JSON.stringify(data, null, 2));
+      return NextResponse.json(
+        { error: 'AI returned empty response', details: data.candidates?.[0]?.finishReason || 'no candidates' },
+        { status: 500 }
+      );
+    }
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
@@ -66,12 +90,13 @@ Use exatamente os IDs das cenas: ${scenes.map(s => s.id).join(', ')}`;
       return NextResponse.json(parsed);
     }
 
-    return NextResponse.json({ error: 'Failed to generate storyboard' }, { status: 500 });
+    console.error('Storyboard Gemini no JSON in response:', text.substring(0, 500));
+    return NextResponse.json({ error: 'Failed to parse storyboard from AI response' }, { status: 500 });
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
     console.error('Storyboard API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });
   }
 }
