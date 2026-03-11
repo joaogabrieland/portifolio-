@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { isAdminEmail } from '@/lib/admin-emails';
 
@@ -10,6 +10,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
+  const checkedPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     const isPublic = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/#');
@@ -18,6 +19,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       setChecked(true);
       return;
     }
+
+    // Prevent re-fetching /api/auth/me for the same pathname
+    if (checkedPathRef.current === pathname) return;
+    checkedPathRef.current = pathname;
 
     const token = localStorage.getItem('cf_token');
     if (!token) {

@@ -242,7 +242,10 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
 
+  const dashboardInitRef = useRef(false);
   useEffect(() => {
+    if (dashboardInitRef.current) return;
+    dashboardInitRef.current = true;
     const plan = localStorage.getItem('cf_plan') || '';
     setUserPlan(plan);
     setUserName(localStorage.getItem('cf_name') || '');
@@ -290,7 +293,10 @@ export default function DashboardPage() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
+  const dataLoadedRef = useRef(false);
   useEffect(() => {
+    if (dataLoadedRef.current) return;
+    dataLoadedRef.current = true;
     const savedSessions = localStorage.getItem(STORAGE_KEY);
     const savedProfiles = localStorage.getItem(PROFILES_KEY);
     const savedShotLists = localStorage.getItem(SHOT_LISTS_KEY);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { fetchClientData } from '@/lib/clients-api';
 import {
   ArrowLeft, Plus, Users, Trash2, ChevronRight, AlertTriangle, Calendar,
@@ -165,8 +165,12 @@ interface UpcomingScheduleSectionProps {
 
 const UpcomingScheduleSection: React.FC<UpcomingScheduleSectionProps> = ({ clients, onSelectClient }) => {
   const [events, setEvents] = useState<_AgendaEventWithClient[]>([]);
+  const fetchedIdsRef = useRef<string>('');
 
   useEffect(() => {
+    const ids = clients.map(c => c.id).sort().join(',');
+    if (ids === fetchedIdsRef.current) return;
+    fetchedIdsRef.current = ids;
     fetchUpcomingEvents(clients).then(setEvents).catch(() => {});
   }, [clients]);
 
@@ -515,8 +519,13 @@ const EMPTY_BI_DATA = {
 
 function useBIData(clients: Client[]) {
   const [data, setData] = useState(EMPTY_BI_DATA);
+  const fetchedIdsRef = useRef<string>('');
 
   useEffect(() => {
+    const ids = clients.map(c => c.id).sort().join(',');
+    if (ids === fetchedIdsRef.current) return;
+    fetchedIdsRef.current = ids;
+
     let cancelled = false;
 
     const compute = async () => {
@@ -873,7 +882,10 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
 
   // Fetch portal invite token once
+  const portalTokenFetchedRef = useRef(false);
   useEffect(() => {
+    if (portalTokenFetchedRef.current) return;
+    portalTokenFetchedRef.current = true;
     const token = localStorage.getItem('cf_token');
     if (!token) return;
     fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
@@ -888,7 +900,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   }, []);
 
   // Load alerts for all clients from API
+  const alertsFetchedIdsRef = useRef<string>('');
   useEffect(() => {
+    const ids = clients.map(c => c.id).sort().join(',');
+    if (ids === alertsFetchedIdsRef.current) return;
+    alertsFetchedIdsRef.current = ids;
+
     const loadAlerts = async () => {
       const todayStr = _getTodayStr();
       const cache: Record<string, ClientAlerts> = {};
