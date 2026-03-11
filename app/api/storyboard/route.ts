@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { GoogleGenAI } from '@google/genai';
 
 interface SceneInput {
   id: string;
@@ -45,40 +46,29 @@ ${scenesText}
 Responda em JSON válido com o formato: {"storyboards": [{"sceneId": "id_da_cena", "description": "descrição detalhada do storyboard"}]}
 Use exatamente os IDs das cenas: ${scenes.map(s => s.id).join(', ')}`;
 
-    let geminiRes: Response;
+    const ai = new GoogleGenAI({ apiKey });
+
+    let response;
     try {
-      geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7 },
-          }),
-        }
-      );
-    } catch (fetchErr) {
-      console.error('Storyboard Gemini fetch error:', fetchErr);
-      return NextResponse.json({ error: 'Failed to connect to AI service', details: String(fetchErr) }, { status: 502 });
-    }
-
-    const data = await geminiRes.json();
-
-    if (!geminiRes.ok) {
-      console.error('Storyboard Gemini API error:', JSON.stringify(data, null, 2));
+      response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { temperature: 0.7 },
+      });
+    } catch (geminiErr) {
+      console.error('Storyboard Gemini SDK error:', geminiErr);
       return NextResponse.json(
-        { error: 'AI service error', status: geminiRes.status, details: data.error?.message || JSON.stringify(data) },
+        { error: 'AI service error', details: String(geminiErr) },
         { status: 502 }
       );
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const text = response.text || '';
 
     if (!text) {
-      console.error('Storyboard Gemini empty response:', JSON.stringify(data, null, 2));
+      console.error('Storyboard Gemini empty response:', JSON.stringify(response, null, 2));
       return NextResponse.json(
-        { error: 'AI returned empty response', details: data.candidates?.[0]?.finishReason || 'no candidates' },
+        { error: 'AI returned empty response' },
         { status: 500 }
       );
     }
