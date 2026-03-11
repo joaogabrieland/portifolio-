@@ -148,9 +148,7 @@ const ROLE_OPTIONS: { value: MemberRole; label: string }[] = [
 ];
 
 const INITIAL_TEAM: TeamMember[] = [
-  { id: 'm1', name: 'Você',         email: 'admin@minhaproducao.com.br',      role: 'admin',      isOwner: true },
-  { id: 'm2', name: 'Ana Costa',    email: 'ana.costa@minhaproducao.com.br',   role: 'roteirista'              },
-  { id: 'm3', name: 'Pedro Lima',   email: 'pedro.lima@minhaproducao.com.br',  role: 'videomaker'              },
+  { id: 'm1', name: 'Você', email: '', role: 'admin', isOwner: true },
 ];
 
 const LABEL_CLS  = 'text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block';
@@ -501,11 +499,7 @@ const BI_FUNNEL_COLS = [
   { id: 'finalizado',  label: 'Finalizado'    },
 ];
 
-const BI_TEAM_DATA: BITeamMember[] = [
-  { name: 'Ana Costa',  role: 'Roteirista',      workload: 75, approvalRate: 92 },
-  { name: 'Pedro Lima', role: 'Videomaker',       workload: 90, approvalRate: 78 },
-  { name: 'Você',       role: 'Diretor Criativo', workload: 60, approvalRate: 95 },
-];
+const BI_TEAM_DATA: BITeamMember[] = [];
 
 const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });

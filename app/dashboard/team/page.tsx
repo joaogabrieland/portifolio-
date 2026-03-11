@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Users, UserPlus, MessageCircle, Copy, Check, X, Link } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -15,43 +15,11 @@ interface TeamMember {
   textCls: string;
 }
 
-const MOCK_TEAM: TeamMember[] = [
-  {
-    id: '1',
-    name: 'Ricardo Alves',
-    role: 'Diretor de Fotografia',
-    whatsapp: '5511999990001',
-    initials: 'RA',
-    bgCls: 'bg-violet-900/40 border-violet-800/40',
-    textCls: 'text-violet-300',
-  },
-  {
-    id: '2',
-    name: 'Fernanda Costa',
-    role: 'Editora Sênior',
-    whatsapp: '5511999990002',
-    initials: 'FC',
-    bgCls: 'bg-emerald-900/40 border-emerald-800/40',
-    textCls: 'text-emerald-300',
-  },
-  {
-    id: '3',
-    name: 'Lucas Martins',
-    role: 'Motion Designer',
-    whatsapp: '5511999990003',
-    initials: 'LM',
-    bgCls: 'bg-blue-900/40 border-blue-800/40',
-    textCls: 'text-blue-300',
-  },
-  {
-    id: '4',
-    name: 'Ana Paula Silva',
-    role: 'Produtora Executiva',
-    whatsapp: '5511999990004',
-    initials: 'AS',
-    bgCls: 'bg-amber-900/40 border-amber-800/40',
-    textCls: 'text-amber-300',
-  },
+const COLOR_SETS = [
+  { bgCls: 'bg-violet-900/40 border-violet-800/40', textCls: 'text-violet-300' },
+  { bgCls: 'bg-emerald-900/40 border-emerald-800/40', textCls: 'text-emerald-300' },
+  { bgCls: 'bg-blue-900/40 border-blue-800/40', textCls: 'text-blue-300' },
+  { bgCls: 'bg-amber-900/40 border-amber-800/40', textCls: 'text-amber-300' },
 ];
 
 export default function TeamPage() {
@@ -60,6 +28,29 @@ export default function TeamPage() {
   const [copied, setCopied] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    const ownerName = localStorage.getItem('cf_name') || 'Você';
+    const ownerEmail = localStorage.getItem('cf_email') || '';
+    const initials = ownerName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    setTeamMembers([{
+      id: 'owner', name: ownerName, role: 'Proprietário', whatsapp: '',
+      initials, ...COLOR_SETS[0],
+    }]);
+    // Fetch real team invites
+    const token = localStorage.getItem('cf_token');
+    if (token) {
+      fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.inviteUrl) {
+            // Team members come from invites - for now show owner only
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   async function handleInvite() {
     setLoading(true);
@@ -110,7 +101,7 @@ export default function TeamPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white leading-tight">Equipe</h1>
-                <p className="text-sm text-gray-500">{MOCK_TEAM.length} membros ativos</p>
+                <p className="text-sm text-gray-500">{teamMembers.length} membros ativos</p>
               </div>
             </div>
             <button
@@ -125,7 +116,7 @@ export default function TeamPage() {
 
           {/* Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {MOCK_TEAM.map((member) => (
+            {teamMembers.map((member) => (
               <div
                 key={member.id}
                 className="group bg-white/[0.03] border border-white/8 hover:border-white/15 rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300"

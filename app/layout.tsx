@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: 'CreatorFlow AI',
   description: 'Suite de produtividade com IA para criadores de conteúdo',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 };
 
@@ -18,7 +18,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark" style={{ colorScheme: 'dark' }} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
-        <link rel="icon" href="/logo.png" type="image/png" />
         <link
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"

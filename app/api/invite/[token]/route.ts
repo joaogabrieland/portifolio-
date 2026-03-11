@@ -11,7 +11,7 @@ export async function GET(
     const result = await query(
       `SELECT u.name, u.email
        FROM team_invites ti
-       JOIN users u ON u.id = ti.user_id
+       JOIN users u ON u.id::text = ti.user_id::text
        WHERE ti.token = $1
        LIMIT 1`,
       [token]
