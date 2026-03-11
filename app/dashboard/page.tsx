@@ -13,6 +13,7 @@ import HubArquivos from '@/components/HubArquivos';
 import ClientsHub from '@/components/ClientsHub';
 import CreatorStockView from '@/components/CreatorStockView';
 import ExecutiveAssistantView from '@/components/ExecutiveAssistantView';
+import { isAdminEmail } from '@/lib/admin-emails';
 import StudioProfileModal from '@/components/StudioProfileModal';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield } from 'lucide-react';
@@ -972,7 +973,7 @@ export default function DashboardPage() {
             </div>
             {/* Right: actions */}
             <div className="flex items-center gap-2">
-              {(userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL || userEmail === 'teste@creatorflowia.com' || userEmail === 'marcosvlogs12@gmail.com') && userEmail && (
+              {userEmail && isAdminEmail(userEmail) && (
                 <button
                   onClick={() => router.push('/admin')}
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border-2 border-violet-500/60 bg-violet-600/20 text-violet-300 text-xs font-black uppercase tracking-wide hover:bg-violet-600/30 hover:border-violet-400/70 transition-all shadow-[0_0_12px_rgba(139,92,246,0.15)]"

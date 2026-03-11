@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,20 +48,21 @@ O contrato deve incluir:
 Use linguagem jurídica profissional brasileira. Formate com títulos em MAIÚSCULO e cláusulas numeradas.
 Responda APENAS com o texto do contrato, sem explicações adicionais.`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192 },
-        }),
-      }
-    );
+    const ai = new GoogleGenAI({ apiKey });
 
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { temperature: 0.3, maxOutputTokens: 8192 },
+      });
+    } catch (geminiErr) {
+      console.error('Contract Gemini SDK error:', geminiErr);
+      return NextResponse.json({ error: 'AI service error', details: String(geminiErr) }, { status: 502 });
+    }
+
+    const text = response.text || '';
 
     if (!text) {
       return NextResponse.json({ error: 'Failed to generate contract' }, { status: 500 });

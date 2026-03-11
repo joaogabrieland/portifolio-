@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 const PUBLIC_ROUTES = ['/', '/login', '/signup', '/subscription-inactive'];
-const ADMIN_EMAILS = ['marcosvlogs12@gmail.com', 'teste@creatorflowia.com'];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -15,16 +15,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const isPublic = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/#');
 
     if (isPublic) {
-      setChecked(true);
-      return;
-    }
-
-    // ── DEV BYPASS ──
-    if (process.env.NODE_ENV === 'development') {
-      if (!localStorage.getItem('cf_token')) localStorage.setItem('cf_token', 'dev-token-bypass');
-      if (!localStorage.getItem('cf_name')) localStorage.setItem('cf_name', 'Dev User');
-      if (!localStorage.getItem('cf_email')) localStorage.setItem('cf_email', 'dev@creatorflow.local');
-      localStorage.setItem('cf_plan', 'agency');
       setChecked(true);
       return;
     }
@@ -61,7 +51,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('cf_plan', data.user.plan || '');
 
         // Admin bypass — NEVER check subscription for admin emails
-        if (ADMIN_EMAILS.includes(email)) {
+        if (isAdminEmail(email)) {
           setChecked(true);
           return;
         }
@@ -75,8 +65,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         setChecked(true);
       })
       .catch(() => {
-        // Network error — allow access with existing token (offline-first)
-        setChecked(true);
+        // Network error — redirect to login for safety
+        router.replace('/login');
       });
   }, [pathname, router]);
 

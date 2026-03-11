@@ -3,21 +3,6 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-// ─── DEV BYPASS ───────────────────────────────────────────────────────────────
-const DEV_USER_ID = 'dev-user-00000000-0000-0000-0000-000000000001';
-const DEV_ME_RESPONSE = {
-  user: {
-    id: DEV_USER_ID,
-    name: 'Usuário Teste',
-    email: 'teste@creatorflow.com',
-    plan: 'agency',
-    subscriptionStatus: 'active',
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-  },
-};
-// ─────────────────────────────────────────────────────────────────────────────
-
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -27,11 +12,6 @@ export async function GET(req: NextRequest) {
 
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
-
-    // DEV BYPASS: skip DB for the dev test user
-    if (process.env.NODE_ENV !== 'production' && decoded.userId === DEV_USER_ID) {
-      return NextResponse.json(DEV_ME_RESPONSE);
-    }
 
     const result = await query(
       `SELECT u.id, u.name, u.email, u.stripe_customer_id,

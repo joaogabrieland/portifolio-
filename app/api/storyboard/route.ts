@@ -76,8 +76,13 @@ Use exatamente os IDs das cenas: ${scenes.map(s => s.id).join(', ')}`;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
 
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return NextResponse.json(parsed);
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return NextResponse.json(parsed);
+      } catch (parseErr) {
+        console.error('Storyboard JSON parse error:', parseErr, jsonMatch[0].substring(0, 300));
+        return NextResponse.json({ error: 'Failed to parse storyboard response' }, { status: 500 });
+      }
     }
 
     console.error('Storyboard Gemini no JSON in response:', text.substring(0, 500));

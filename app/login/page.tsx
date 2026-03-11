@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
+import { isAdminEmail } from '@/lib/admin-emails';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,8 +53,7 @@ export default function LoginPage() {
       if (data.user.plan) localStorage.setItem('cf_plan', data.user.plan);
 
       // Admin bypass — always go to dashboard
-      const adminEmails = ['marcosvlogs12@gmail.com', 'teste@creatorflowia.com'];
-      if (adminEmails.includes(data.user.email)) {
+      if (isAdminEmail(data.user.email)) {
         router.push('/dashboard');
       } else if (data.user.subscriptionStatus !== 'active') {
         router.push('/subscription-inactive');

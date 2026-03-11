@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
+import { isAdminEmail } from '@/lib/admin-emails';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 export async function verifyAdmin(req: NextRequest): Promise<{ userId: string } | NextResponse> {
@@ -16,8 +17,7 @@ export async function verifyAdmin(req: NextRequest): Promise<{ userId: string } 
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail || result.rows[0].email !== adminEmail) {
+    if (!isAdminEmail(result.rows[0].email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

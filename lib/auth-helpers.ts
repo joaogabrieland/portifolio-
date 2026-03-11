@@ -4,10 +4,6 @@ import { verifyToken } from '@/lib/jwt';
 import { PLANS, PlanKey } from '@/lib/stripe';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-// ─── DEV BYPASS ───────────────────────────────────────────────────────────────
-const DEV_USER_ID = '00000000-0000-0000-0000-000000000001';
-// ─────────────────────────────────────────────────────────────────────────────
-
 export type AuthResult =
   | { userId: string; plan: PlanKey }
   | NextResponse;
@@ -25,11 +21,6 @@ export async function authenticateAndCheckCRM(req: NextRequest): Promise<AuthRes
   try {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
-
-    // DEV BYPASS: skip DB for dev user in non-production environments
-    if (process.env.NODE_ENV !== 'production' && decoded.userId === DEV_USER_ID) {
-      return { userId: DEV_USER_ID, plan: 'agency' as PlanKey };
-    }
 
     const result = await query(
       `SELECT s.plan FROM subscriptions s
@@ -80,12 +71,6 @@ export async function authenticateUser(req: NextRequest): Promise<{ userId: stri
   try {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
-
-    // DEV BYPASS: skip DB for dev user in non-production environments
-    if (process.env.NODE_ENV !== 'production' && decoded.userId === DEV_USER_ID) {
-      return { userId: DEV_USER_ID };
-    }
-
     return { userId: decoded.userId };
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
