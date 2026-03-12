@@ -162,6 +162,7 @@ export const sendMessageToAgent = async (
     };
 
     if (isProVisual) {
+        config.responseModalities = ['Text', 'Image'];
         config.imageConfig = {
             aspectRatio: "9:16",
             imageSize: imageSize

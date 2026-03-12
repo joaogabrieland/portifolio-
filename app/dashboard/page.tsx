@@ -219,10 +219,19 @@ export default function DashboardPage() {
   const [deletedClientName, setDeletedClientName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (window.location.search.includes('success=true')) {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('success') === 'true') {
       setShowPaymentSuccess(true);
       window.history.replaceState({}, '', '/dashboard');
       setTimeout(() => setShowPaymentSuccess(false), 6000);
+    }
+
+    // Open agent from URL param (e.g. /dashboard?agent=storyboard_generator)
+    const agentParam = params.get('agent');
+    if (agentParam && Object.values(AgentId).includes(agentParam as AgentId)) {
+      setActiveAgentId(agentParam as AgentId);
+      window.history.replaceState({}, '', '/dashboard');
     }
   }, []);
 
@@ -807,8 +816,9 @@ export default function DashboardPage() {
             onBack={handleBack}
         />
       ) : activeAgent ? (
-        <AgentView 
-          agent={activeAgent} 
+        <AgentView
+          key={activeAgentId}
+          agent={activeAgent}
           onBack={handleBack}
           sessions={sessions[activeAgent.id] || []}
           onSaveSession={(session) => handleSaveSession(activeAgent.id, session)}

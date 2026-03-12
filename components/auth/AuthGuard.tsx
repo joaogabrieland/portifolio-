@@ -11,6 +11,26 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
   const checkedPathRef = useRef<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 10-second safety timeout — prevents infinite loading screen
+  useEffect(() => {
+    if (checked) return;
+
+    timeoutRef.current = setTimeout(() => {
+      if (!checked) {
+        localStorage.removeItem('cf_token');
+        localStorage.removeItem('cf_email');
+        localStorage.removeItem('cf_name');
+        localStorage.removeItem('cf_plan');
+        router.replace('/login?error=timeout');
+      }
+    }, 10000);
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [checked, router]);
 
   useEffect(() => {
     const isPublic = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/#');

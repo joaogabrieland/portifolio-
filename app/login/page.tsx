@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -14,6 +14,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
+
+  // Show timeout message from AuthGuard redirect
+  useEffect(() => {
+    if (window.location.search.includes('error=timeout')) {
+      setErrors({ general: 'Sessão expirada. Faça login novamente.' });
+      window.history.replaceState({}, '', '/login');
+    }
+  }, []);
 
   const validate = () => {
     const errs: typeof errors = {};
