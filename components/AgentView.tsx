@@ -1176,6 +1176,23 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   const isProAgent = agent.id === AgentId.STORYBOARD_GENERATOR || agent.id === AgentId.IMAGE_GENERATOR;
   const isBudgetAgent = agent.id === AgentId.BUDGET_SHEET;
 
+  // Detect agent switch and reset internal state (without remounting)
+  const prevAgentIdRef = useRef(agent.id);
+  useEffect(() => {
+    if (prevAgentIdRef.current !== agent.id) {
+      prevAgentIdRef.current = agent.id;
+      setCurrentSessionId(null);
+      setLoading(false);
+      setSelectedImage(null);
+      setInput('');
+      const initial: Message[] = [];
+      if (agent.initialMessage && agent.id !== AgentId.INSTAGRAM_CAPTIONS) {
+        initial.push({ role: 'model', text: agent.initialMessage, timestamp: Date.now() });
+      }
+      setMessages(initial);
+    }
+  }, [agent.id, agent.initialMessage]);
+
   useEffect(() => {
     if (currentSessionId) {
         const session = sessions.find(s => s.id === currentSessionId);
@@ -1189,12 +1206,12 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
                 setActiveBrandKitId(session.brandKitId);
             }
         }
-    } else {
+    } else if (prevAgentIdRef.current === agent.id) {
         const initial: Message[] = [];
         if (agent.initialMessage && agent.id !== AgentId.INSTAGRAM_CAPTIONS) {
             initial.push({ role: 'model', text: agent.initialMessage, timestamp: Date.now() });
         }
-        setMessages(initial); 
+        setMessages(initial);
     }
   }, [currentSessionId, sessions, agent.initialMessage, agent.id, instagramProfiles]);
 
@@ -1202,10 +1219,13 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   useEffect(() => { if (!isQuizMode && !activeProfile && agent.id !== AgentId.INSTAGRAM_CAPTIONS) inputRef.current?.focus(); }, [isQuizMode, activeProfile, agent.id]);
 
   // Handle cross-agent prompt transfer
+  const processedNavRef = useRef<string | null>(null);
   useEffect(() => {
-    if (navigationContext?.prompt && messages.length <= 1) {
+    if (navigationContext?.prompt && processedNavRef.current !== navigationContext.prompt) {
+        processedNavRef.current = navigationContext.prompt;
         setCurrentSessionId(null);
-        doSendMessage(navigationContext.prompt);
+        // Small delay to let agent-change state reset complete
+        setTimeout(() => doSendMessage(navigationContext.prompt), 50);
     }
   }, [navigationContext]);
 
@@ -1302,7 +1322,7 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   };
 
   const doSendMessage = async (text: string, img: string | null = null, audio: string | null = null) => {
-    if (isProAgent) {
+    if (isProAgent && typeof (window as any).aistudio?.hasSelectedApiKey === 'function') {
         const hasKey = await (window as any).aistudio.hasSelectedApiKey();
         if (!hasKey) {
             await (window as any).aistudio.openSelectKey();
@@ -1383,8 +1403,9 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
       // Tratar erro de Key se retornado pelo serviço
       if (responseText.includes("ERRO_KEY")) {
           alert("Por favor, selecione uma API Key com faturamento ativo para usar este recurso de IA de imagem avançada.");
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (window as any).aistudio.openSelectKey();
+          if (typeof (window as any).aistudio?.openSelectKey === 'function') {
+            await (window as any).aistudio.openSelectKey();
+          }
           setLoading(false);
           return;
       }
@@ -1408,6 +1429,7 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   };
 
   const handleTransferToStoryboard = (text: string) => {
+    localStorage.setItem('pendingStoryboardScript', text);
     if (onNavigateToAgent) {
         onNavigateToAgent(AgentId.STORYBOARD_GENERATOR, `Aqui está meu roteiro para transformar em Storyboard cinematográfico 9:16:\n\n${text}`);
     }

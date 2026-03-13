@@ -231,6 +231,16 @@ export default function DashboardPage() {
     const agentParam = params.get('agent');
     if (agentParam && Object.values(AgentId).includes(agentParam as AgentId)) {
       setActiveAgentId(agentParam as AgentId);
+
+      // Auto-send pending script from localStorage (e.g. "Transformar em Storyboard" flow)
+      if (params.get('autoSend') === '1') {
+        const pendingScript = localStorage.getItem('pendingStoryboardScript');
+        if (pendingScript) {
+          setNavigationContext({ prompt: `Aqui está meu roteiro para transformar em Storyboard cinematográfico 9:16:\n\n${pendingScript}` });
+          localStorage.removeItem('pendingStoryboardScript');
+        }
+      }
+
       window.history.replaceState({}, '', '/dashboard');
     }
   }, []);
@@ -817,7 +827,6 @@ export default function DashboardPage() {
         />
       ) : activeAgent ? (
         <AgentView
-          key={activeAgentId}
           agent={activeAgent}
           onBack={handleBack}
           sessions={sessions[activeAgent.id] || []}

@@ -27,66 +27,65 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'AI service not configured' }, { status: 503 });
     }
 
-    const scenesText = scenes.map((sc, i) =>
-      `Cena ${i + 1}: Visual: ${sc.visual || 'Não descrito'}. Áudio: ${sc.audio || 'Sem áudio.'}`
-    ).join('\n');
-
-    const prompt = `Você é um diretor de fotografia profissional. Para o roteiro "${scriptTitle || 'Sem título'}", gere descrições detalhadas de storyboard para cada cena.
-
-Para cada cena, descreva:
-- Enquadramento (plano geral, médio, close-up, etc.)
-- Ângulo de câmera (nível dos olhos, plongée, contra-plongée, etc.)
-- Movimento de câmera (estático, pan, tilt, tracking, etc.)
-- Iluminação sugerida
-- Composição visual e elementos-chave em quadro
-
-Cenas do roteiro:
-${scenesText}
-
-Responda em JSON válido com o formato: {"storyboards": [{"sceneId": "id_da_cena", "description": "descrição detalhada do storyboard"}]}
-Use exatamente os IDs das cenas: ${scenes.map(s => s.id).join(', ')}`;
-
     const ai = new GoogleGenAI({ apiKey });
 
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { temperature: 0.7 },
-      });
-    } catch (geminiErr) {
-      console.error('Storyboard Gemini SDK error:', geminiErr);
-      return NextResponse.json(
-        { error: 'AI service error', details: String(geminiErr) },
-        { status: 502 }
-      );
-    }
+    // Generate one image per scene in parallel (max 6)
+    const scenesToProcess = scenes.slice(0, 6);
 
-    const text = response.text || '';
+    const storyboardPromises = scenesToProcess.map(async (scene, i) => {
+      const sceneDesc = scene.visual || 'Cena sem descrição';
+      const prompt = `Gere uma ilustração de storyboard profissional para a seguinte cena de vídeo.
+Título do roteiro: "${scriptTitle || 'Sem título'}"
+Cena ${i + 1}: ${sceneDesc}
+${scene.audio ? `Áudio/Narração: ${scene.audio}` : ''}
 
-    if (!text) {
-      console.error('Storyboard Gemini empty response:', JSON.stringify(response, null, 2));
-      return NextResponse.json(
-        { error: 'AI returned empty response' },
-        { status: 500 }
-      );
-    }
+Estilo: ilustração cinematográfica de storyboard, formato vertical 9:16, traços limpos, preto e branco com tons de cinza.
+Descreva brevemente o enquadramento e ângulo de câmera escolhidos.`;
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return NextResponse.json(parsed);
-      } catch (parseErr) {
-        console.error('Storyboard JSON parse error:', parseErr, jsonMatch[0].substring(0, 300));
-        return NextResponse.json({ error: 'Failed to parse storyboard response' }, { status: 500 });
-      }
-    }
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash-preview-image-generation',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          config: {
+            responseModalities: ['Text', 'Image'],
+            temperature: 0.7,
+          },
+        });
 
-    console.error('Storyboard Gemini no JSON in response:', text.substring(0, 500));
-    return NextResponse.json({ error: 'Failed to parse storyboard from AI response' }, { status: 500 });
+        let description = '';
+        let image: string | null = null;
+
+        if (response.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.text) description += part.text;
+            if (part.inlineData) {
+              const mimeType = part.inlineData.mimeType || 'image/png';
+              image = `data:${mimeType};base64,${part.inlineData.data}`;
+            }
+          }
+        }
+
+        if (!description && response.text) {
+          description = response.text;
+        }
+
+        return {
+          sceneId: scene.id,
+          description: description || `Storyboard para cena ${i + 1}`,
+          image,
+        };
+      } catch (sceneErr) {
+        console.error(`Storyboard scene ${i + 1} error:`, sceneErr);
+        return {
+          sceneId: scene.id,
+          description: `Erro ao gerar imagem para cena ${i + 1}. Descrição: ${sceneDesc}`,
+          image: null,
+        };
+      }
+    });
+
+    const storyboards = await Promise.all(storyboardPromises);
+    return NextResponse.json({ storyboards });
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

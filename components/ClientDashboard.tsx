@@ -2791,8 +2791,9 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
       }
       if (!res.ok) throw new Error('Storyboard API failed');
       const data = await res.json();
-      const storyboards: { sceneId: string; description: string }[] = data.storyboards || [];
+      const storyboards: { sceneId: string; description: string; image?: string | null }[] = data.storyboards || [];
       const descMap = new Map(storyboards.map(sb => [sb.sceneId, sb.description]));
+      const imgMap = new Map(storyboards.map(sb => [sb.sceneId, sb.image || null]));
 
       // If we auto-generated scenes from plain text, create proper scene objects
       const hasAutoScenes = scenesToSend.some(sc => sc.id.startsWith('scene-'));
@@ -2804,11 +2805,13 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
           audio: sc.audio,
           isChecked: false,
           storyboardText: descMap.get(sc.id) || undefined,
+          storyboardUrl: imgMap.get(sc.id) || undefined,
         }));
       } else {
         updatedScenes = script.scenes.map(sc => {
           const desc = descMap.get(sc.id);
-          return desc ? { ...sc, storyboardText: desc } : sc;
+          const img = imgMap.get(sc.id);
+          return desc ? { ...sc, storyboardText: desc, storyboardUrl: img || undefined } : sc;
         });
       }
 

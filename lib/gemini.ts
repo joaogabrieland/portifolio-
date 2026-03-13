@@ -110,7 +110,7 @@ export const sendMessageToAgent = async (
 
     let modelId = 'gemini-3-flash-preview';
     if (isProVisual) {
-        modelId = 'gemini-3-pro-image-preview';
+        modelId = 'gemini-2.0-flash-preview-image-generation';
     } else if (useThinking) {
         modelId = 'gemini-3-pro-preview';
     }
