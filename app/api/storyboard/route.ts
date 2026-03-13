@@ -28,60 +28,93 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-
-    // Generate one image per scene in parallel (max 6)
     const scenesToProcess = scenes.slice(0, 6);
 
-    const storyboardPromises = scenesToProcess.map(async (scene, i) => {
-      const sceneDesc = scene.visual || 'Cena sem descrição';
-      const prompt = `Gere uma ilustração de storyboard profissional para a seguinte cena de vídeo.
-Título do roteiro: "${scriptTitle || 'Sem título'}"
-Cena ${i + 1}: ${sceneDesc}
-${scene.audio ? `Áudio/Narração: ${scene.audio}` : ''}
+    // Step 1: Generate text descriptions for all scenes using gemini-2.0-flash
+    const scenesText = scenesToProcess.map((sc, i) =>
+      `Cena ${i + 1}: Visual: ${sc.visual || 'Não descrito'}. Áudio: ${sc.audio || 'Sem áudio.'}`
+    ).join('\n');
 
-Estilo: ilustração cinematográfica de storyboard, formato vertical 9:16, traços limpos, preto e branco com tons de cinza.
-Descreva brevemente o enquadramento e ângulo de câmera escolhidos.`;
+    const textPrompt = `Você é um diretor de fotografia. Para o roteiro "${scriptTitle || 'Sem título'}", gere uma descrição curta de storyboard para cada cena (enquadramento, ângulo, movimento de câmera, composição).
 
+${scenesText}
+
+Responda em JSON: {"scenes": [{"id": "ID", "label": "tipo de plano curto", "description": "descrição detalhada"}]}
+IDs: ${scenesToProcess.map(s => s.id).join(', ')}`;
+
+    let sceneDescriptions: { id: string; label: string; description: string }[] = [];
+    try {
+      const textResponse = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{ role: 'user', parts: [{ text: textPrompt }] }],
+        config: { temperature: 0.7 },
+      });
+      const raw = (textResponse.text || '').replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        sceneDescriptions = parsed.scenes || [];
+      }
+    } catch (textErr) {
+      console.error('Storyboard text generation error:', textErr);
+    }
+
+    // Build description map
+    const descMap = new Map(sceneDescriptions.map(s => [s.id, s]));
+
+    // Step 2: Generate images — try Imagen 3 first, fallback to gemini-2.0-flash
+    const generateImage = async (sceneDesc: string): Promise<string | null> => {
+      const imagePrompt = `cinematic storyboard frame, vertical 9:16, black and white sketch style: ${sceneDesc}`;
+
+      // Try Imagen 3
+      try {
+        const response = await ai.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: imagePrompt,
+          config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+        });
+        if (response.generatedImages?.[0]?.image?.imageBytes) {
+          return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+        }
+      } catch (imagenErr) {
+        console.error('Imagen 3 fallback to gemini-2.0-flash:', String(imagenErr).slice(0, 200));
+      }
+
+      // Fallback: gemini-2.0-flash with responseModalities
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash-preview-image-generation',
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: {
-            responseModalities: ['Text', 'Image'],
-            temperature: 0.7,
-          },
+          model: 'gemini-2.0-flash',
+          contents: [{ role: 'user', parts: [{ text: `Generate a storyboard illustration: ${imagePrompt}` }] }],
+          config: { responseModalities: ['Text', 'Image'] },
         });
-
-        let description = '';
-        let image: string | null = null;
-
         if (response.candidates?.[0]?.content?.parts) {
           for (const part of response.candidates[0].content.parts) {
-            if (part.text) description += part.text;
             if (part.inlineData) {
-              const mimeType = part.inlineData.mimeType || 'image/png';
-              image = `data:${mimeType};base64,${part.inlineData.data}`;
+              const mime = part.inlineData.mimeType || 'image/png';
+              return `data:${mime};base64,${part.inlineData.data}`;
             }
           }
         }
-
-        if (!description && response.text) {
-          description = response.text;
-        }
-
-        return {
-          sceneId: scene.id,
-          description: description || `Storyboard para cena ${i + 1}`,
-          image,
-        };
-      } catch (sceneErr) {
-        console.error(`Storyboard scene ${i + 1} error:`, sceneErr);
-        return {
-          sceneId: scene.id,
-          description: `Erro ao gerar imagem para cena ${i + 1}. Descrição: ${sceneDesc}`,
-          image: null,
-        };
+      } catch (flashErr) {
+        console.error('gemini-2.0-flash image fallback error:', String(flashErr).slice(0, 200));
       }
+
+      return null;
+    };
+
+    // Step 3: Generate images in parallel
+    const storyboardPromises = scenesToProcess.map(async (scene, i) => {
+      const info = descMap.get(scene.id);
+      const label = info?.label || `Cena ${i + 1}`;
+      const description = info?.description || scene.visual || '';
+      const image = await generateImage(description || scene.visual);
+
+      return {
+        sceneId: scene.id,
+        label,
+        description,
+        image,
+      };
     });
 
     const storyboards = await Promise.all(storyboardPromises);
