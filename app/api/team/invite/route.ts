@@ -33,8 +33,9 @@ export async function GET(req: NextRequest) {
     );
 
     if (existing.rows.length > 0) {
+      const origin = req.nextUrl.origin;
       return NextResponse.json({
-        inviteUrl: `https://creatorflowia.com/invite/${existing.rows[0].token}`,
+        inviteUrl: `${origin}/invite/${existing.rows[0].token}`,
       });
     }
 
@@ -65,8 +66,9 @@ export async function GET(req: NextRequest) {
       [decoded.userId, inviteToken]
     );
 
+    const origin = req.nextUrl.origin;
     return NextResponse.json({
-      inviteUrl: `https://creatorflowia.com/invite/${inviteToken}`,
+      inviteUrl: `${origin}/invite/${inviteToken}`,
     });
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {

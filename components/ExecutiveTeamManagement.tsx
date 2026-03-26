@@ -12,8 +12,13 @@ import {
   Check,
   Trash2,
   ChevronRight,
+  Link2,
+  Copy,
+  Shield,
+  Briefcase,
+  Wrench,
 } from 'lucide-react';
-import type { ExecutiveProject, TeamMember, Freelancer } from '@/types';
+import type { ExecutiveProject, TeamMember, Freelancer, MemberType } from '@/types';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
@@ -21,6 +26,54 @@ import type { ExecutiveProject, TeamMember, Freelancer } from '@/types';
 
 function formatCurrency(v: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+}
+
+function MemberTypeBadge({ type }: { type?: MemberType }) {
+  if (!type || type === 'profissional') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/25 text-[9px] font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap">
+        <Briefcase className="w-2.5 h-2.5" />
+        Profissional
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25 text-[9px] font-black text-amber-400 uppercase tracking-widest whitespace-nowrap">
+      <Wrench className="w-2.5 h-2.5" />
+      Fornecedor
+    </span>
+  );
+}
+
+function MemberTypeSelector({ value, onChange }: { value: MemberType; onChange: (v: MemberType) => void }) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange('profissional')}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+          value === 'profissional'
+            ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/40'
+            : 'text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'
+        }`}
+      >
+        <Briefcase className="w-3.5 h-3.5" />
+        Profissional / Freelancer
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('fornecedor')}
+        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+          value === 'fornecedor'
+            ? 'bg-amber-500/10 text-amber-300 border-amber-500/40'
+            : 'text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'
+        }`}
+      >
+        <Wrench className="w-3.5 h-3.5" />
+        Fornecedor / Prestador
+      </button>
+    </div>
+  );
 }
 
 // ─── Scale Modal ──────────────────────────────────────────────────────────────
@@ -39,14 +92,14 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
   const [selected, setSelected]     = useState<Freelancer | null>(null);
 
   // New freelancer form state
-  const [newName, setNewName]   = useState('');
-  const [newRole, setNewRole]   = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newRate, setNewRate]   = useState('');
+  const [newName,       setNewName]       = useState('');
+  const [newRole,       setNewRole]       = useState('');
+  const [newPhone,      setNewPhone]      = useState('');
+  const [newEmail,      setNewEmail]      = useState('');
+  const [newRate,       setNewRate]       = useState('');
+  const [newMemberType, setNewMemberType] = useState<MemberType>('profissional');
 
-  // Allocation config state
-  const [days, setDays]           = useState(1);
+  // Allocation config state (days fixed at 1; defined later in Budget Sheet)
   const [agreedRate, setAgreedRate] = useState(0);
 
   const filtered = useMemo(
@@ -75,6 +128,7 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
       phone: newPhone.trim(),
       email: newEmail.trim(),
       baseDailyRate: rate,
+      memberType: newMemberType,
     };
     const updated = [...freelancers, fl];
     setFreelancers(updated);
@@ -90,9 +144,10 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
       role: selected.role,
       phone: selected.phone,
       email: selected.email,
-      days,
+      days: 1,
       agreedRate,
-      totalCost: days * agreedRate,
+      totalCost: agreedRate,
+      memberType: selected.memberType ?? 'profissional',
     });
   };
 
@@ -147,11 +202,20 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
                     onClick={() => goToConfigure(f)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-800 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-indigo-400" />
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      f.memberType === 'fornecedor'
+                        ? 'bg-amber-500/10 border border-amber-500/20'
+                        : 'bg-indigo-500/10 border border-indigo-500/20'
+                    }`}>
+                      {f.memberType === 'fornecedor'
+                        ? <Wrench className="w-4 h-4 text-amber-400" />
+                        : <User className="w-4 h-4 text-indigo-400" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white truncate">{f.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-white truncate">{f.name}</span>
+                        <MemberTypeBadge type={f.memberType} />
+                      </div>
                       <div className="text-xs text-gray-500 truncate">
                         {f.role} · {formatCurrency(f.baseDailyRate)}/dia
                       </div>
@@ -178,6 +242,15 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
         {/* ── NEW FREELANCER view ── */}
         {view === 'new' && (
           <form onSubmit={handleRegisterNew} className="px-6 py-5 space-y-4">
+
+            {/* Type selector */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Tipo de Registo
+              </label>
+              <MemberTypeSelector value={newMemberType} onChange={setNewMemberType} />
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Nome Completo
@@ -287,43 +360,27 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
               </button>
             </div>
 
-            {/* Days + Rate */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Diárias no Projeto
-                </label>
-                <input
-                  type="number"
-                  value={days}
-                  onChange={e => setDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  min="1"
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Custo / Diária (R$)
-                </label>
-                <input
-                  type="number"
-                  value={agreedRate}
-                  onChange={e => setAgreedRate(parseFloat(e.target.value) || 0)}
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
+            {/* Rate */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                Custo / Diária (R$)
+              </label>
+              <input
+                type="number"
+                value={agreedRate}
+                onChange={e => setAgreedRate(parseFloat(e.target.value) || 0)}
+                min="0"
+                step="0.01"
+                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+              />
             </div>
 
-            {/* Total preview */}
-            <div className="flex items-center justify-between px-4 py-3.5 bg-gray-800/50 border border-gray-700/50 rounded-xl">
-              <span className="text-xs font-black text-gray-500 uppercase tracking-wider">
-                Custo Total desta Alocação
-              </span>
-              <span className="text-lg font-black text-white tabular-nums">
-                {formatCurrency(days * agreedRate)}
-              </span>
+            {/* Info note */}
+            <div className="flex items-start gap-2.5 px-4 py-3 bg-gray-800/40 border border-gray-700/40 rounded-xl">
+              <span className="text-base leading-none mt-0.5">💡</span>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                O número de diárias será definido na <span className="font-bold text-gray-400">Planilha Orçamentária</span>.
+              </p>
             </div>
 
             {/* Actions */}
@@ -349,16 +406,158 @@ function ScaleModal({ onClose, onAdd }: ScaleModalProps) {
   );
 }
 
+// ─── Invite Modal ─────────────────────────────────────────────────────────────
+
+interface InviteModalProps {
+  projectId: string;
+  onClose: () => void;
+}
+
+function InviteModal({ projectId, onClose }: InviteModalProps) {
+  const [email, setEmail]   = useState('');
+  const [role, setRole]     = useState<'admin' | 'member'>('member');
+  const [link, setLink]     = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const generateLink = () => {
+    const token  = Math.random().toString(36).substring(2, 18) + Date.now().toString(36);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    setLink(`${origin}/invite/${token}?projeto=${projectId}&role=${role}`);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl">
+
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+          <h2 className="text-base font-bold text-white">Convidar para a Produção</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              E-mail (opcional)
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="colaborador@email.com"
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Role selector */}
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              Nível de Acesso
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setRole('admin')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  role === 'admin'
+                    ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/40'
+                    : 'text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('member')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  role === 'member'
+                    ? 'bg-violet-500/10 text-violet-300 border-violet-500/40'
+                    : 'text-gray-500 border-gray-700 hover:border-gray-600 hover:text-gray-300'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                Membro
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-600 mt-1.5">
+              {role === 'admin'
+                ? 'Admin: acesso total — pode adicionar, editar e apagar.'
+                : 'Membro: pode visualizar e adicionar, sem permissão para apagar ou editar.'}
+            </p>
+          </div>
+
+          {/* Generated link */}
+          {link && (
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                Link de Convite
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl">
+                <Link2 className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                <span className="flex-1 text-xs text-gray-300 truncate font-mono">{link}</span>
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex-shrink-0"
+                >
+                  {copied
+                    ? <><Check className="w-3.5 h-3.5" /> Copiado!</>
+                    : <><Copy className="w-3.5 h-3.5" /> Copiar</>
+                  }
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm font-bold text-gray-400 hover:text-white transition-colors"
+            >
+              Fechar
+            </button>
+            <button
+              onClick={generateLink}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              <Link2 className="w-4 h-4" />
+              {link ? 'Gerar Novo Link' : 'Gerar Link de Convite'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface Props {
   project: ExecutiveProject;
   onUpdate: (updated: ExecutiveProject) => void;
-  readOnly?: boolean;
+  isAdmin?: boolean;
 }
 
-export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = false }: Props) {
-  const [showModal, setShowModal] = useState(false);
+export default function ExecutiveTeamManagement({ project, onUpdate, isAdmin = true }: Props) {
+  const [showModal, setShowModal]           = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const totalTeamCost = project.teamMembers.reduce((sum, m) => sum + m.totalCost, 0);
 
@@ -385,7 +584,7 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
       <div className="flex-1 overflow-y-auto p-5">
 
         {/* Summary + action bar */}
-        {!readOnly ? (
+        {isAdmin ? (
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="px-5 py-3.5 bg-gray-900 border border-gray-800 rounded-2xl">
               <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">
@@ -399,6 +598,31 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-white text-sm font-bold rounded-xl transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Convidar Membro
+              </button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                Escalar Profissional
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-base font-bold text-white">Equipe do Projeto</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {project.teamMembers.length} profissional{project.teamMembers.length !== 1 ? 'is' : ''} escalado{project.teamMembers.length !== 1 ? 's' : ''}
+              </p>
+            </div>
             <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
@@ -406,13 +630,6 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
               <UserPlus className="w-4 h-4" />
               Escalar Profissional
             </button>
-          </div>
-        ) : (
-          <div className="mb-6">
-            <h2 className="text-base font-bold text-white">Equipe do Projeto</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {project.teamMembers.length} profissional{project.teamMembers.length !== 1 ? 'is' : ''} escalado{project.teamMembers.length !== 1 ? 's' : ''}
-            </p>
           </div>
         )}
 
@@ -424,7 +641,7 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
             </div>
             <h3 className="text-base font-bold text-gray-400 mb-1">Nenhum profissional escalado</h3>
             <p className="text-sm text-gray-600">
-              {readOnly
+              {!isAdmin
                 ? 'Nenhum profissional foi escalado para este projeto.'
                 : 'Clique em "Escalar Profissional" para montar a equipe do projeto.'}
             </p>
@@ -434,11 +651,11 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
             {/* Table header (desktop) */}
             <div className={`hidden gap-4 px-5 py-3 border-b border-gray-800 ${
-              readOnly
+              !isAdmin
                 ? 'md:grid md:grid-cols-[2fr_1.5fr_2fr_auto]'
                 : 'md:grid md:grid-cols-[2fr_1.5fr_2fr_auto_auto_auto_auto]'
             }`}>
-              {(readOnly
+              {(!isAdmin
                 ? ['Nome', 'Função', 'Contato', 'Diárias']
                 : ['Nome', 'Função', 'Contato', 'Diárias', 'Custo/Dia', 'Custo Total', '']
               ).map(h => (
@@ -456,7 +673,7 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
               <div
                 key={member.id}
                 className={`flex flex-col gap-2 items-start px-5 py-4 ${
-                  readOnly
+                  !isAdmin
                     ? 'md:grid md:grid-cols-[2fr_1.5fr_2fr_auto] md:gap-4 md:items-center'
                     : 'md:grid md:grid-cols-[2fr_1.5fr_2fr_auto_auto_auto_auto] md:gap-4 md:items-center'
                 } ${
@@ -465,10 +682,19 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
               >
                 {/* Name */}
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-indigo-400" />
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    member.memberType === 'fornecedor'
+                      ? 'bg-amber-500/10 border border-amber-500/20'
+                      : 'bg-indigo-500/10 border border-indigo-500/20'
+                  }`}>
+                    {member.memberType === 'fornecedor'
+                      ? <Wrench className="w-4 h-4 text-amber-400" />
+                      : <User className="w-4 h-4 text-indigo-400" />}
                   </div>
-                  <span className="text-sm font-bold text-white truncate">{member.name}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-white truncate block">{member.name}</span>
+                    <MemberTypeBadge type={member.memberType} />
+                  </div>
                 </div>
 
                 {/* Role */}
@@ -501,21 +727,21 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
                 </span>
 
                 {/* Agreed rate */}
-                {!readOnly && (
+                {!!isAdmin && (
                   <span className="text-sm text-gray-400 pl-11 md:pl-0 whitespace-nowrap">
                     {formatCurrency(member.agreedRate)}
                   </span>
                 )}
 
                 {/* Total cost */}
-                {!readOnly && (
+                {!!isAdmin && (
                   <span className="text-sm font-black text-white pl-11 md:pl-0 whitespace-nowrap">
                     {formatCurrency(member.totalCost)}
                   </span>
                 )}
 
                 {/* Remove */}
-                {!readOnly && (
+                {!!isAdmin && (
                   <div className="pl-11 md:pl-0">
                     <button
                       onClick={() => handleRemoveMember(member.id)}
@@ -532,8 +758,11 @@ export default function ExecutiveTeamManagement({ project, onUpdate, readOnly = 
         )}
       </div>
 
-      {showModal && !readOnly && (
+      {showModal && (
         <ScaleModal onClose={() => setShowModal(false)} onAdd={handleAddMember} />
+      )}
+      {showInviteModal && isAdmin && (
+        <InviteModal projectId={project.id} onClose={() => setShowInviteModal(false)} />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { X, Clapperboard, Camera, Aperture, Mic, Lightbulb } from 'lucide-react';
+import { X, Clapperboard, Camera, Aperture, Mic, Lightbulb, Package } from 'lucide-react';
 import { StudioProfile } from '@/types';
 
 // ─────────────────────────────────────────────
@@ -293,6 +293,14 @@ const StudioProfileModal: React.FC<StudioProfileModalProps> = ({
                 placeholder="Ex: Amaran 100X, Nanlite FS-300, Godox SL200…"
                 tags={draft.equipment.lighting}
                 onChange={tags => updateEquipment('lighting', tags)}
+              />
+
+              <TagInput
+                icon={<Package className="w-3.5 h-3.5" />}
+                label="Outros"
+                placeholder="Ex: Drone DJI Mini 3, Gimbal DJI RS4, Teleprompter…"
+                tags={draft.equipment.others ?? []}
+                onChange={tags => updateEquipment('others', tags)}
               />
             </div>
           )}

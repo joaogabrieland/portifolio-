@@ -33,13 +33,15 @@ import {
   Loader2,
   Upload,
   Clock,
+  Download,
+  Folder,
 } from 'lucide-react';
 import { Client, Invoice } from '@/types';
 
 // ─────────────────────────────────────────────
 // Shared types
 // ─────────────────────────────────────────────
-type PortalTab   = 'dashboard' | 'roteiros' | 'videos' | 'reunioes' | 'financeiro' | 'mensagens';
+type PortalTab   = 'dashboard' | 'roteiros' | 'videos' | 'reunioes' | 'financeiro' | 'documentos' | 'mensagens';
 type ReviewStatus = 'aguardando' | 'aprovado' | 'alteracao';
 
 const REVIEW_STATUS_CONFIG: Record<ReviewStatus, { label: string; badge: string }> = {
@@ -998,7 +1000,6 @@ const PortalVideosTab: React.FC<{ clientId: string }> = ({ clientId }) => {
   if (deliverables.length === 0) {
     return (
       <div className="animate-in fade-in duration-200">
-        <VideoUploadSection />
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="text-4xl mb-4">📦</div>
           <h2 className="text-base font-black text-gray-400 mb-1">Nenhum material enviado</h2>
@@ -1010,7 +1011,6 @@ const PortalVideosTab: React.FC<{ clientId: string }> = ({ clientId }) => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
-      <VideoUploadSection />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1474,44 +1474,51 @@ interface PortalMessage {
   created_at: string;
 }
 
-const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
-  const [inviteToken, setInviteToken] = useState('');
-  const [messages, setMessages] = useState<PortalMessage[]>([]);
+interface InboxMessage {
+  id: number;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+const PortalMensagensTab: React.FC<{ clientId: string; inviteToken: string }> = ({ clientId, inviteToken }) => {
+  // Producer → client messages (sent by producer, shown as reference)
+  const [sentMessages, setSentMessages] = useState<PortalMessage[]>([]);
+  const [loadingSent, setLoadingSent] = useState(true);
+
+  // Client → producer inbox
+  const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([]);
+  const [loadingInbox, setLoadingInbox] = useState(true);
+
+  // Compose (producer → client)
   const [newMessage, setNewMessage] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [sending, setSending] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(true);
   const [toast, setToast] = useState('');
 
-  // Fetch invite token + messages on mount
+  function formatDate(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Fetch producer-sent messages
   useEffect(() => {
-    async function init() {
-      try {
-        const cfToken = localStorage.getItem('cf_token');
-        // Get the producer's invite token
-        const inviteRes = await fetch('/api/team/invite', {
-          headers: { Authorization: `Bearer ${cfToken}` },
-        });
-        if (inviteRes.ok) {
-          const data = await inviteRes.json();
-          // Extract token from URL: https://creatorflowia.com/invite/{token}
-          const urlToken = data.inviteUrl.split('/invite/')[1];
-          setInviteToken(urlToken);
-          // Fetch existing messages
-          const msgRes = await fetch(`/api/cliente/${urlToken}/messages`);
-          if (msgRes.ok) {
-            const msgData = await msgRes.json();
-            setMessages(msgData.messages || []);
-          }
-        }
-      } catch (err) {
-        console.error('Mensagens init error:', err);
-      } finally {
-        setLoadingMessages(false);
-      }
-    }
-    init();
-  }, []);
+    if (!inviteToken) return;
+    fetch(`/api/cliente/${inviteToken}/messages`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.messages) setSentMessages(d.messages || []); })
+      .catch(() => {})
+      .finally(() => setLoadingSent(false));
+  }, [inviteToken]);
+
+  // Fetch client inbox messages (marks as read automatically)
+  useEffect(() => {
+    if (!inviteToken || !clientId) return;
+    fetch(`/api/portal/${inviteToken}/${clientId}/messages`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.messages) setInboxMessages(d.messages || []); })
+      .catch(() => {})
+      .finally(() => setLoadingInbox(false));
+  }, [inviteToken, clientId]);
 
   async function handleSend() {
     if (!newMessage.trim() || !inviteToken) return;
@@ -1528,16 +1535,9 @@ const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setMessages(prev => [data.message, ...prev]);
-        setToast('Mensagem salva no portal do cliente!');
+        setSentMessages(prev => [data.message, ...prev]);
+        setToast('Aviso enviado ao portal do cliente!');
         setTimeout(() => setToast(''), 3000);
-
-        // Also open WhatsApp if number is provided
-        if (whatsappNumber.trim()) {
-          const phone = whatsappNumber.replace(/\D/g, '');
-          const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(newMessage.trim())}`;
-          window.open(waUrl, '_blank');
-        }
         setNewMessage('');
       }
     } catch (err) {
@@ -1547,13 +1547,9 @@ const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
     }
   }
 
-  function formatDate(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-8 animate-in fade-in duration-200">
+
       {/* Toast */}
       {toast && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-900/20 border border-emerald-800/50">
@@ -1562,79 +1558,24 @@ const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
         </div>
       )}
 
-      {/* Compose */}
-      <div className="rounded-2xl border border-gray-800/50 bg-gray-950/50 p-5 space-y-4">
-        <h3 className="text-sm font-black text-gray-300">Enviar Aviso ao Cliente</h3>
-
-        <div>
-          <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-            WhatsApp do cliente (opcional)
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 font-bold">+55</span>
-            <input
-              type="tel"
-              value={whatsappNumber}
-              onChange={e => setWhatsappNumber(e.target.value)}
-              placeholder="11999998888"
-              className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-gray-600 transition-colors"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-            Mensagem
-          </label>
-          <textarea
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            placeholder="Escreva a mensagem para o cliente..."
-            rows={3}
-            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-gray-600 transition-colors resize-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSend}
-            disabled={!newMessage.trim() || sending}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send className="w-4 h-4" />
-            {sending ? 'Enviando...' : 'Enviar'}
-          </button>
-          {whatsappNumber.trim() && (
-            <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
-              <Phone className="w-3 h-3" />
-              Também abre no WhatsApp
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Messages list */}
+      {/* ── Inbox: messages from client ── */}
       <div>
         <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-3">
-          Mensagens Enviadas · {messages.length}
+          Mensagens do Cliente
         </h3>
-
-        {loadingMessages ? (
-          <div className="flex items-center justify-center py-12">
+        {!inviteToken || loadingInbox ? (
+          <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
           </div>
-        ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="w-8 h-8 text-gray-800 mb-3" />
-            <p className="text-sm text-gray-600">Nenhuma mensagem enviada ainda.</p>
+        ) : inboxMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <MessageSquare className="w-7 h-7 text-gray-800 mb-3" />
+            <p className="text-sm text-gray-600">Nenhuma mensagem do cliente ainda.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className="px-4 py-3 rounded-xl bg-gray-900/50 border border-gray-800/50"
-              >
+            {inboxMessages.map(msg => (
+              <div key={msg.id} className="px-4 py-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20">
                 <p className="text-sm text-gray-300 whitespace-pre-wrap">{msg.message}</p>
                 <p className="text-[11px] text-gray-600 mt-2">{formatDate(msg.created_at)}</p>
               </div>
@@ -1642,6 +1583,117 @@ const PortalMensagensTab: React.FC<{ clientId: string }> = () => {
           </div>
         )}
       </div>
+
+      {/* ── Compose: producer → client ── */}
+      <div className="rounded-2xl border border-gray-800/50 bg-gray-950/50 p-5 space-y-4">
+        <h3 className="text-sm font-black text-gray-300">Enviar Aviso ao Cliente</h3>
+
+        <textarea
+          value={newMessage}
+          onChange={e => setNewMessage(e.target.value)}
+          placeholder="Escreva a mensagem para o cliente..."
+          rows={3}
+          className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-gray-600 transition-colors resize-none"
+        />
+
+        <button
+          onClick={handleSend}
+          disabled={!newMessage.trim() || sending || !inviteToken}
+          className="flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Send className="w-4 h-4" />
+          {sending ? 'Enviando...' : 'Enviar'}
+        </button>
+      </div>
+
+      {/* ── Sent messages log ── */}
+      <div>
+        <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-500 mb-3">
+          Avisos Enviados · {sentMessages.length}
+        </h3>
+        {loadingSent ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 text-gray-600 animate-spin" />
+          </div>
+        ) : sentMessages.length === 0 ? (
+          <p className="text-sm text-gray-600">Nenhum aviso enviado ainda.</p>
+        ) : (
+          <div className="space-y-2">
+            {sentMessages.map(msg => (
+              <div key={msg.id} className="px-4 py-3 rounded-xl bg-gray-900/50 border border-gray-800/50">
+                <p className="text-sm text-gray-300 whitespace-pre-wrap">{msg.message}</p>
+                <p className="text-[11px] text-gray-600 mt-2">{formatDate(msg.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
+// TAB: Documentos (Client portal — read-only)
+// ─────────────────────────────────────────────
+const PORTAL_MOCK_DOCS = [
+  { id: '1', name: 'Contrato_Prestacao_Servicos.pdf',  date: '26/03/2026', size: '150 KB' },
+  { id: '2', name: 'Proposta_Comercial_Marco.pdf',      date: '20/03/2026', size: '89 KB'  },
+  { id: '3', name: 'Autorizacao_Uso_Imagem.pdf',        date: '15/03/2026', size: '62 KB'  },
+];
+
+const PortalDocumentosTab: React.FC<{ clientId: string }> = ({ clientId: _clientId }) => {
+  const docs = PORTAL_MOCK_DOCS;
+
+  return (
+    <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-xl font-extrabold text-white tracking-tight">Os Seus Documentos</h2>
+        <p className="text-sm text-gray-500 mt-1">Ficheiros partilhados pela sua produtora.</p>
+      </div>
+
+      {/* Document list */}
+      {docs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center mb-4">
+            <Folder className="w-7 h-7 text-gray-600" />
+          </div>
+          <p className="text-gray-400 font-bold mb-1">Nenhum documento disponível</p>
+          <p className="text-gray-600 text-sm">A sua produtora ainda não partilhou nenhum ficheiro.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <div
+              key={doc.id}
+              className="group flex items-center gap-4 px-5 py-4 rounded-2xl border border-gray-800/70 bg-gray-900/60 hover:bg-gray-800/60 hover:border-gray-700/70 transition-all duration-150"
+            >
+              {/* PDF icon */}
+              <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-red-500/10 border border-red-500/20">
+                <FileText className="w-5 h-5 text-red-400" />
+              </div>
+
+              {/* Meta */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{doc.name}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{doc.date} · {doc.size}</p>
+              </div>
+
+              {/* Download only */}
+              <button
+                onClick={() => window.open('#', '_blank')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/60 text-xs font-bold text-gray-400 hover:text-white hover:bg-gray-700 hover:border-gray-600 transition-all duration-150 opacity-0 group-hover:opacity-100"
+                title="Descarregar"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Descarregar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -1654,8 +1706,9 @@ const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ComponentType<{ c
   { id: 'roteiros',   label: 'Roteiros',   icon: FileText },
   { id: 'videos',     label: 'Vídeos',     icon: Video },
   { id: 'reunioes',   label: 'Reuniões',   icon: Users },
-  { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
-  { id: 'mensagens',  label: 'Mensagens',  icon: MessageSquare },
+  { id: 'financeiro',  label: 'Financeiro',  icon: DollarSign    },
+  { id: 'documentos',  label: 'Documentos',  icon: Folder        },
+  { id: 'mensagens',   label: 'Mensagens',   icon: MessageSquare },
 ];
 
 // ─────────────────────────────────────────────
@@ -1669,6 +1722,30 @@ interface ClientPortalViewProps {
 const ClientPortalView: React.FC<ClientPortalViewProps> = ({ client, onBack }) => {
   const [activeTab,   setActiveTab]   = useState<PortalTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [inviteToken, setInviteToken] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch producer inviteToken once, then poll unread client messages count
+  useEffect(() => {
+    const cfToken = localStorage.getItem('cf_token');
+    fetch('/api/team/invite', { headers: { Authorization: `Bearer ${cfToken}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.inviteUrl) return;
+        const token = data.inviteUrl.split('/invite/')[1];
+        setInviteToken(token);
+        return fetch(`/api/portal/${token}/${client.id}/messages?peek=true`);
+      })
+      .then(r => r?.ok ? r.json() : null)
+      .then(d => { if (d?.count) setUnreadCount(d.count); })
+      .catch(() => {});
+  }, [client.id]);
+
+  const handleTabClick = (id: PortalTab) => {
+    setActiveTab(id);
+    if (id === 'mensagens') setUnreadCount(0);
+    setSidebarOpen(false);
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-950 text-white animate-in fade-in duration-300">
@@ -1723,7 +1800,7 @@ const ClientPortalView: React.FC<ClientPortalViewProps> = ({ client, onBack }) =
             return (
               <button
                 key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
+                onClick={() => handleTabClick(tab.id)}
                 className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${
                   isActive
                     ? 'bg-white/[0.07] text-white'
@@ -1732,7 +1809,12 @@ const ClientPortalView: React.FC<ClientPortalViewProps> = ({ client, onBack }) =
               >
                 {isActive && <span className="absolute left-0 inset-y-0 my-2 w-[2px] rounded-full bg-indigo-500" />}
                 <tab.icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-indigo-400' : 'text-gray-600 group-hover:text-gray-400'}`} />
-                <span className="truncate">{tab.label}</span>
+                <span className="truncate flex-1">{tab.label}</span>
+                {tab.id === 'mensagens' && unreadCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1796,8 +1878,9 @@ const ClientPortalView: React.FC<ClientPortalViewProps> = ({ client, onBack }) =
             {activeTab === 'roteiros'   && <PortalRoteirosTab  clientId={client.id} />}
             {activeTab === 'videos'     && <PortalVideosTab    clientId={client.id} />}
             {activeTab === 'reunioes'   && <PortalReunioeTab   clientId={client.id} />}
-            {activeTab === 'financeiro' && <PortalFinanceiroTab clientId={client.id} />}
-            {activeTab === 'mensagens'  && <PortalMensagensTab  clientId={client.id} />}
+            {activeTab === 'financeiro'  && <PortalFinanceiroTab  clientId={client.id} />}
+            {activeTab === 'documentos'  && <PortalDocumentosTab  clientId={client.id} />}
+            {activeTab === 'mensagens'   && <PortalMensagensTab   clientId={client.id} inviteToken={inviteToken} />}
 
           </div>
         </main>

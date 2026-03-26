@@ -3,46 +3,45 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Users, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useAgency } from '@/components/AgencyContext';
+import type { AgencyUser } from '@/lib/agency-storage';
 
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
+  const { addTeamMember } = useAgency();
+
   const [producerName, setProducerName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Signup form state
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [name, setName]               = useState('');
+  const [password, setPassword]       = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting]   = useState(false);
+  const [formError, setFormError]     = useState('');
 
   useEffect(() => {
-    async function fetchInvite() {
-      try {
-        const res = await fetch(`/api/invite/${token}`);
-        if (!res.ok) {
-          setError('Convite não encontrado ou expirado.');
-          return;
-        }
-        const data = await res.json();
-        setProducerName(data.name);
-        if (data.email) setInviteEmail(data.email);
-      } catch {
-        setError('Erro ao carregar convite.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchInvite();
+    // ⚠️ UI TEST BYPASS — skips token validation while backend isn't connected.
+    // Accepts any token and shows the signup form.
+    // TODO: Backend — replace with: fetch(`/api/team/invite/validate?token=${token}`)
+    //   .then(res => res.ok ? res.json() : Promise.reject())
+    //   .then(data => setProducerName(data.agencyName))
+    //   .catch(() => setError('Convite não encontrado ou expirado.'));
+    setProducerName('CreatorFlow (modo teste)');
+    setLoading(false);
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
+    if (!inviteEmail.trim() || !inviteEmail.includes('@')) {
+      setFormError('Digite um e-mail válido.');
+      return;
+    }
     if (!name.trim()) {
       setFormError('Digite seu nome.');
       return;
@@ -53,36 +52,36 @@ export default function InvitePage() {
     }
 
     setSubmitting(true);
-    try {
-      const res = await fetch(`/api/invite/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), password }),
-      });
 
-      const data = await res.json();
+    // TODO: Backend — Lógica de criação de Auth no Supabase/Firebase
+    // Substituir por: const { user } = await supabase.auth.signUp({
+    //   email: inviteEmail, password,
+    //   options: { data: { name: name.trim(), role: 'user', inviteToken: token } }
+    // });
+    // ou Firebase: await createUserWithEmailAndPassword(auth, inviteEmail, password)
+    //              await updateProfile(firebaseUser, { displayName: name.trim() });
 
-      if (!res.ok) {
-        setFormError(data.error || 'Erro ao criar conta.');
-        return;
-      }
+    // Create the new member object and register them in the global agency state.
+    const newMember: AgencyUser = {
+      id: `member_${Date.now()}`,
+      name: name.trim(),
+      email: inviteEmail.trim(),
+      role: 'user',         // invited members always start as 'user'
+      memberRole: 'editor', // default functional role; admin can change it later
+      isOwner: false,
+      joinedAt: Date.now(),
+    };
 
-      // Store auth data and redirect to dashboard
-      if (data.token) {
-        localStorage.setItem('cf_token', data.token);
-        localStorage.setItem('cf_email', data.email || inviteEmail);
-        localStorage.setItem('cf_name', name.trim());
-        localStorage.setItem('cf_plan', data.plan || '');
-        router.push('/dashboard');
-      } else {
-        // Fallback: redirect to login
-        router.push('/login');
-      }
-    } catch {
-      setFormError('Erro de rede. Tente novamente.');
-    } finally {
-      setSubmitting(false);
-    }
+    // Write a fake auth token so AuthGuard lets the new member into the dashboard.
+    // The bypass_member_ prefix signals AuthGuard to skip the /api/auth/me call.
+    localStorage.setItem('cf_token', `bypass_member_${Date.now()}`);
+    localStorage.setItem('cf_plan', '');
+
+    // addTeamMember also syncs cf_email / cf_name / cf_role to localStorage
+    // and sets this user as currentUser in the global AgencyContext.
+    addTeamMember(newMember);
+
+    router.push('/dashboard');
   };
 
   if (loading) {
@@ -129,7 +128,7 @@ export default function InvitePage() {
 
         {/* Signup Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email (read-only, from invite) */}
+          {/* Email */}
           <div>
             <label className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2 block">
               Email
@@ -137,8 +136,11 @@ export default function InvitePage() {
             <input
               type="email"
               value={inviteEmail}
-              readOnly
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-500 focus:outline-none cursor-not-allowed"
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="Seu e-mail"
+              required
+              autoFocus
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-zinc-600"
             />
           </div>
 
@@ -153,7 +155,6 @@ export default function InvitePage() {
               onChange={e => setName(e.target.value)}
               placeholder="Seu nome completo"
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-zinc-600"
-              autoFocus
             />
           </div>
 

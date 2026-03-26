@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Briefcase, Mail, Phone, Camera, Check, Save } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
+import { useAgency } from '@/components/AgencyContext';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { updateCurrentUser } = useAgency();
+
   const [saved, setSaved] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [form, setForm] = useState({
@@ -30,11 +34,38 @@ export default function ProfilePage() {
     ? form.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : 'CF';
 
+  // ── File upload handler ───────────────────────────────────────────────────
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target?.result as string;
+      setAvatarUrl(base64);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so the same file can be re-selected if needed
+    e.target.value = '';
+  };
+
   const handleSave = () => {
+    // TODO: Backend Dev - Conectar upload real aqui.
+    // Quando o avatarUrl for um Base64, enviar para o storage (Supabase Storage / Firebase Storage):
+    //   const { data } = await supabase.storage.from('avatars').upload(`${userId}.jpg`, decode(base64));
+    //   const publicUrl = supabase.storage.from('avatars').getPublicUrl(data.path).data.publicUrl;
+    //   await supabase.from('users').update({ avatar_url: publicUrl }).eq('id', userId);
+    // Então substituir avatarUrl pelo publicUrl antes de gravar no localStorage.
     localStorage.setItem('cf_name', form.name);
     localStorage.setItem('cf_role', form.role);
     localStorage.setItem('cf_whatsapp', form.whatsapp);
     if (avatarUrl) localStorage.setItem('cf_avatar', avatarUrl);
+
+    // Propagate changes to global AgencyContext so the header and team list
+    // update immediately without requiring a page reload.
+    updateCurrentUser({ name: form.name, ...(avatarUrl ? { avatar: avatarUrl } : {}) });
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -69,6 +100,17 @@ export default function ProfilePage() {
           <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6 mb-6">
             <label className={labelCls}>Foto do Perfil</label>
             <div className="flex items-center gap-5">
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleFileChange}
+              />
+
+              {/* Avatar + camera trigger */}
               <div className="relative flex-shrink-0">
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -82,21 +124,34 @@ export default function ProfilePage() {
                     <span className="text-2xl font-bold text-violet-300">{initials}</span>
                   </div>
                 )}
-                <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-[#111] border border-white/15 rounded-lg flex items-center justify-center">
+                {/* Camera button — clicks the hidden file input */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Carregar foto do dispositivo"
+                  className="absolute -bottom-2 -right-2 w-7 h-7 bg-[#111] border border-white/15 rounded-lg flex items-center justify-center hover:border-violet-500/50 hover:bg-violet-900/30 transition-all"
+                >
                   <Camera className="w-3.5 h-3.5 text-gray-400" />
-                </div>
+                </button>
               </div>
+
+              {/* URL / preview field */}
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-500 mb-2 leading-relaxed">
-                  Cole a URL de uma imagem de perfil (JPEG, PNG, WebP)
+                  Clique na câmera para carregar uma foto do seu dispositivo, ou cole uma URL abaixo.
                 </p>
                 <input
-                  type="url"
+                  type="text"
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://exemplo.com/foto.jpg"
                   className={inputCls}
                 />
+                {avatarUrl.startsWith('data:') && (
+                  <p className="text-[10px] text-emerald-500 mt-1.5 font-bold">
+                    ✓ Foto carregada do dispositivo — salve para confirmar.
+                  </p>
+                )}
               </div>
             </div>
           </div>

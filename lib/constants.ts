@@ -1012,7 +1012,7 @@ Exemplo: Corporate meeting office handshake, close up, slow motion, 4k, cinemati
   },
   [AgentId.IMAGE_GENERATOR]: {
     id: AgentId.IMAGE_GENERATOR,
-    title: "Gerador de Imagens",
+    title: "Prompt para Imagem",
     description: "Crie imagens únicas e conceituais para seus vídeos e thumbnails.",
     icon: Palette,
     color: "text-pink-600 dark:text-pink-400",

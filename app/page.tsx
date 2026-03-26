@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import Navbar from '@/components/landing/Navbar';
 import HeroSection from '@/components/landing/HeroSection';
 import FeaturesSection from '@/components/landing/FeaturesSection';
-import WorkflowSection from '@/components/landing/WorkflowSection';
-import AboutSection from '@/components/landing/AboutSection';
-import PricingSection from '@/components/landing/PricingSection';
+import ClientHubSection from '@/components/landing/ClientHubSection';
+import ExecutiveCreationSection from '@/components/landing/ExecutiveCreationSection';
+import ExtraToolsSection from '@/components/landing/ExtraToolsSection';
+import ClosingSection from '@/components/landing/ClosingSection';
 import Footer from '@/components/landing/Footer';
 import FilmGrain from '@/components/landing/FilmGrain';
 
@@ -31,9 +32,10 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <FeaturesSection />
-      <WorkflowSection />
-      <AboutSection />
-      <PricingSection />
+      <ClientHubSection />
+      <ExecutiveCreationSection />
+      <ExtraToolsSection />
+      <ClosingSection />
       <Footer />
     </main>
   );

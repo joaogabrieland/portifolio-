@@ -24,7 +24,7 @@ import HourlyRateCalculator from '@/components/HourlyRateCalculator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ProjectType = 'institucional' | 'evento' | 'reels' | 'documentario' | '';
+type ProjectType = 'institucional' | 'evento' | 'reels' | 'documentario' | 'publicidade' | '';
 
 interface ExtrasItem {
   enabled: boolean;
@@ -54,6 +54,7 @@ const PROJECT_TYPES: { id: ProjectType; label: string; desc: string }[] = [
   { id: 'evento',        label: 'Evento',              desc: 'Cobertura ao vivo ou retrospectiva' },
   { id: 'reels',         label: 'Reels / TikTok',      desc: 'Conteúdo rápido para redes sociais' },
   { id: 'documentario',  label: 'Documentário',         desc: 'Produção de longa duração' },
+  { id: 'publicidade',   label: 'Publicidade',          desc: 'Comerciais e campanhas publicitárias para marcas.' },
 ];
 
 const MARGIN_OPTIONS = [

@@ -16,6 +16,11 @@ import {
   Briefcase,
   Shield,
   Eye,
+  Upload,
+  Link,
+  DollarSign,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import type { ProjectStatus, ExecutiveProject, BudgetCategory } from '@/types';
 import ExecutiveBudgetSheet from '@/components/ExecutiveBudgetSheet';
@@ -24,6 +29,7 @@ import ExecutiveMonitoringCenter from '@/components/ExecutiveMonitoringCenter';
 import ExecutiveSchedule from '@/components/ExecutiveSchedule';
 import ExecutiveDocuments from '@/components/ExecutiveDocuments';
 import ExecutiveFinancialControl from '@/components/ExecutiveFinancialControl';
+import TutorialModal, { TutorialButton } from '@/components/TutorialModal';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,7 +56,9 @@ const MODULES = [
 
 type ModuleId = typeof MODULES[number]['id'];
 
-const ADMIN_ONLY_MODULE_IDS: ModuleId[] = ['monitoramento', 'orcamento', 'financeiro'];
+// 'monitoramento' intentionally excluded — members CAN access the dashboard,
+// but financial cards are hidden via the isAdmin prop on the component itself.
+const ADMIN_ONLY_MODULE_IDS: ModuleId[] = ['orcamento', 'financeiro'];
 
 const STATUS_CONFIG: Record<
   ProjectStatus,
@@ -84,14 +92,23 @@ const STATUS_CONFIG: Record<
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const TIPO_PROJETO_OPTIONS = [
+  'Publicidade', 'Institucional', 'Videoclipe', 'Documentário', 'Evento',
+];
+
 function migrateProject(p: ExecutiveProject): ExecutiveProject {
   return {
     ...p,
-    budgetCategories: p.budgetCategories ?? createDefaultBudgetCategories(),
-    teamMembers:      p.teamMembers      ?? [],
-    milestones:       p.milestones       ?? [],
-    documents:        p.documents        ?? [],
-    transactions:     p.transactions     ?? [],
+    budgetCategories:    p.budgetCategories    ?? createDefaultBudgetCategories(),
+    teamMembers:         p.teamMembers         ?? [],
+    milestones:          p.milestones          ?? [],
+    documents:           p.documents           ?? [],
+    transactions:        p.transactions        ?? [],
+    tipoProjeto:         p.tipoProjeto         ?? '',
+    orcamentoPreAprovado: p.orcamentoPreAprovado ?? 0,
+    linkBriefing:        p.linkBriefing        ?? '',
+    clientLogo:          p.clientLogo          ?? '',
+    custoExecutado:      p.custoExecutado      ?? 0,
   };
 }
 
@@ -101,124 +118,174 @@ function formatDate(dateStr: string): string {
   return `${d}/${m}/${y}`;
 }
 
-// ─── New Project Modal ────────────────────────────────────────────────────────
+// ─── Project Form Modal (create + edit) ──────────────────────────────────────
 
-interface NewProjectModalProps {
+interface ProjectFormModalProps {
   onClose: () => void;
   onSave: (project: ExecutiveProject) => void;
+  /** When provided, the modal opens in edit mode pre-populated with this project. */
+  initialData?: ExecutiveProject;
 }
 
-function NewProjectModal({ onClose, onSave }: NewProjectModalProps) {
-  const [name, setName]           = useState('');
-  const [client, setClient]       = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate]     = useState('');
+function ProjectFormModal({ onClose, onSave, initialData }: ProjectFormModalProps) {
+  const isEditing = !!initialData;
+
+  const [name,         setName]         = useState(initialData?.name         ?? '');
+  const [client,       setClient]       = useState(initialData?.client       ?? '');
+  const [startDate,    setStartDate]    = useState(initialData?.startDate    ?? '');
+  const [endDate,      setEndDate]      = useState(initialData?.endDate      ?? '');
+  const [status,       setStatus]       = useState<ProjectStatus>(initialData?.status ?? 'pre_producao');
+  const [tipoProjeto,  setTipoProjeto]  = useState(initialData?.tipoProjeto  ?? '');
+  const [orcamento,    setOrcamento]    = useState(
+    initialData?.orcamentoPreAprovado ? String(initialData.orcamentoPreAprovado) : ''
+  );
+  const [linkBriefing, setLinkBriefing] = useState(initialData?.linkBriefing ?? '');
+
+  const fieldCls = "w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors";
+  const labelCls = "block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !client.trim() || !startDate || !endDate) return;
-    onSave({
-      id: `ep_${Date.now()}`,
-      name: name.trim(),
-      client: client.trim(),
-      startDate,
-      endDate,
-      status: 'pre_producao',
-      createdAt: Date.now(),
-      budgetCategories: createDefaultBudgetCategories(),
-      teamMembers:  [],
-      milestones:   [],
-      documents:    [],
-      transactions: [],
-    });
+    const orcNum = parseFloat(orcamento.replace(',', '.')) || 0;
+
+    if (isEditing && initialData) {
+      // Preserve all existing sub-data (budget, team, etc.) — only update the header fields
+      onSave({
+        ...initialData,
+        name: name.trim(),
+        client: client.trim(),
+        startDate,
+        endDate,
+        status,
+        tipoProjeto,
+        orcamentoPreAprovado: orcNum,
+        linkBriefing: linkBriefing.trim(),
+      });
+    } else {
+      onSave({
+        id: `ep_${Date.now()}`,
+        name: name.trim(),
+        client: client.trim(),
+        startDate,
+        endDate,
+        status: 'pre_producao',
+        createdAt: Date.now(),
+        budgetCategories: createDefaultBudgetCategories(),
+        teamMembers:  [],
+        milestones:   [],
+        documents:    [],
+        transactions: [],
+        tipoProjeto,
+        orcamentoPreAprovado: orcNum,
+        linkBriefing: linkBriefing.trim(),
+        clientLogo:   '',
+        custoExecutado: 0,
+      });
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl">
+      <div className="w-full max-w-lg bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-          <h2 className="text-base font-bold text-white">Novo Projeto</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-          >
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900">
+          <h2 className="text-base font-bold text-white">
+            {isEditing ? 'Editar Projeto' : 'Novo Projeto'}
+          </h2>
+          <button onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+
+          {/* Nome + Cliente */}
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Nome do Projeto
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ex: Campanha Verão 2026"
-              className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
-              required
-            />
+            <label className={labelCls}>Nome do Projeto</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              placeholder="Ex: Campanha Verão 2026" className={fieldCls} required />
+          </div>
+          <div>
+            <label className={labelCls}>Cliente</label>
+            <input type="text" value={client} onChange={e => setClient(e.target.value)}
+              placeholder="Ex: Nike Brasil" className={fieldCls} required />
           </div>
 
+          {/* Tipo de Projeto */}
           <div>
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Cliente
-            </label>
-            <input
-              type="text"
-              value={client}
-              onChange={e => setClient(e.target.value)}
-              placeholder="Ex: Nike Brasil"
-              className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
-              required
-            />
+            <label className={labelCls}>Tipo de Projeto</label>
+            <select value={tipoProjeto} onChange={e => setTipoProjeto(e.target.value)}
+              className={fieldCls}>
+              <option value="">Selecionar tipo...</option>
+              {TIPO_PROJETO_OPTIONS.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
 
+          {/* Status — only shown in edit mode */}
+          {isEditing && (
+            <div>
+              <label className={labelCls}>Status</label>
+              <select
+                value={status}
+                onChange={e => setStatus(e.target.value as ProjectStatus)}
+                className={fieldCls}
+              >
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Orçamento Pré-Aprovado */}
+          <div>
+            <label className={labelCls}>Orçamento Pré-Aprovado (R$)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <input type="text" value={orcamento} onChange={e => setOrcamento(e.target.value)}
+                placeholder="Ex: 50000" className={fieldCls + ' pl-9'} />
+            </div>
+          </div>
+
+          {/* Link Briefing */}
+          <div>
+            <label className={labelCls}>Link do Briefing</label>
+            <div className="relative">
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              <input type="url" value={linkBriefing} onChange={e => setLinkBriefing(e.target.value)}
+                placeholder="https://notion.so/..." className={fieldCls + ' pl-9'} />
+            </div>
+          </div>
+
+          {/* Datas */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Data de Início
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                required
-              />
+              <label className={labelCls}>Data de Início</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className={fieldCls} required />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Data de Fim
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
-                required
-              />
+              <label className={labelCls}>Data de Fim</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className={fieldCls} required />
             </div>
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white transition-colors"
-            >
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 text-sm font-bold text-gray-400 hover:text-white transition-colors">
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
-            >
-              Criar Projeto
+            <button type="submit"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
+              {isEditing ? 'Salvar Alterações' : 'Criar Projeto'}
             </button>
           </div>
         </form>
@@ -236,10 +303,12 @@ interface ExecutiveAssistantViewProps {
 export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantViewProps) {
   const [view, setView]                     = useState<'lobby' | 'project'>('lobby');
   const [selectedProject, setSelectedProject] = useState<ExecutiveProject | null>(null);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const { data: rawProjects, setData: setRawProjects } = useUserData<ExecutiveProject[]>('executive_projects', []);
   const projects = useMemo(() => rawProjects.map(migrateProject), [rawProjects]);
   const setProjects = setRawProjects;
   const [showModal, setShowModal]           = useState(false);
+  const [editingProject, setEditingProject] = useState<ExecutiveProject | null>(null);
   const [activeModule, setActiveModule]     = useState<ModuleId>('monitoramento');
   const [sidebarOpen, setSidebarOpen]       = useState(false);
   const [viewRole, setViewRole]             = useState<'admin' | 'member'>('admin');
@@ -247,6 +316,21 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
   const handleSaveProject = useCallback((project: ExecutiveProject) => {
     setProjects(prev => [project, ...prev]);
     setShowModal(false);
+  }, []);
+
+  const handleSaveEditedProject = useCallback((updated: ExecutiveProject) => {
+    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
+    setEditingProject(null);
+  }, []);
+
+  const handleDeleteProject = useCallback((projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+  }, []);
+
+  const handleEditProject = useCallback((project: ExecutiveProject, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProject(project);
   }, []);
 
   const handleOpenProject = useCallback((project: ExecutiveProject) => {
@@ -259,7 +343,7 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
   const handleSetViewRole = useCallback((role: 'admin' | 'member') => {
     setViewRole(role);
     if (role === 'member' && ADMIN_ONLY_MODULE_IDS.includes(activeModule)) {
-      setActiveModule('cronograma');
+      setActiveModule('monitoramento'); // fallback to dashboard (shows without financial cards)
     }
   }, [activeModule]);
 
@@ -273,6 +357,17 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
     setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
     setSelectedProject(updatedProject);
   }, []);
+
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedProject) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const b64 = ev.target?.result as string;
+      handleUpdateProject({ ...selectedProject, clientLogo: b64 });
+    };
+    reader.readAsDataURL(file);
+  }, [selectedProject, handleUpdateProject]);
 
   // ── LOBBY ────────────────────────────────────────────────────────────────────
 
@@ -306,13 +401,16 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
                 <h1 className="text-2xl font-black text-white tracking-tight">Projetos Executivos</h1>
                 <p className="text-sm text-gray-500 mt-1">Gerencie suas produções de grande porte.</p>
               </div>
-              <button
-                onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Novo Projeto
-              </button>
+              <div className="flex items-center gap-3">
+                <TutorialButton onClick={() => setIsTutorialOpen(true)} />
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Projeto
+                </button>
+              </div>
             </div>
 
             {/* Empty state */}
@@ -336,8 +434,8 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
               <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
 
                 {/* Table header */}
-                <div className="hidden md:grid md:grid-cols-[2fr_1.5fr_1fr_1fr_1.2fr] gap-4 px-5 py-3 border-b border-gray-800">
-                  {['Projeto', 'Cliente', 'Início', 'Fim', 'Status'].map(h => (
+                <div className="hidden md:grid md:grid-cols-[2fr_1.5fr_1fr_1fr_1.2fr_auto] gap-4 px-5 py-3 border-b border-gray-800">
+                  {['Projeto', 'Cliente', 'Início', 'Fim', 'Status', 'Ações'].map(h => (
                     <span key={h} className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
                       {h}
                     </span>
@@ -348,45 +446,80 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
                 {projects.map((project, idx) => {
                   const st = STATUS_CONFIG[project.status];
                   return (
-                    <button
+                    <div
                       key={project.id}
-                      onClick={() => handleOpenProject(project)}
-                      className={`w-full flex flex-col md:grid md:grid-cols-[2fr_1.5fr_1fr_1fr_1.2fr] gap-2 md:gap-4 items-start md:items-center px-5 py-4 text-left hover:bg-gray-800/50 transition-colors ${
+                      className={`group w-full flex flex-col md:grid md:grid-cols-[2fr_1.5fr_1fr_1fr_1.2fr_auto] gap-2 md:gap-4 items-start md:items-center px-5 py-4 hover:bg-gray-800/50 transition-colors ${
                         idx < projects.length - 1 ? 'border-b border-gray-800/50' : ''
                       }`}
                     >
-                      {/* Nome */}
-                      <div className="flex items-center gap-3 min-w-0 w-full">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="w-4 h-4 text-indigo-400" />
+                      {/* Clickable area spanning all data columns */}
+                      <button
+                        onClick={() => handleOpenProject(project)}
+                        className="contents text-left"
+                        aria-label={`Abrir projeto ${project.name}`}
+                      >
+                        {/* Nome */}
+                        <div className="flex items-center gap-3 min-w-0 w-full cursor-pointer">
+                          <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden">
+                            {project.clientLogo ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={project.clientLogo}
+                                alt="Logo"
+                                className="w-8 h-8 rounded-lg object-contain bg-gray-800"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                                <Briefcase className="w-4 h-4 text-indigo-400" />
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-sm font-bold text-white truncate">{project.name}</span>
                         </div>
-                        <span className="text-sm font-bold text-white truncate">{project.name}</span>
-                      </div>
 
-                      {/* Cliente */}
-                      <span className="text-sm text-gray-400 truncate pl-11 md:pl-0">
-                        {project.client}
-                      </span>
-
-                      {/* Início */}
-                      <span className="text-sm text-gray-500 pl-11 md:pl-0 hidden md:block">
-                        {formatDate(project.startDate)}
-                      </span>
-
-                      {/* Fim */}
-                      <span className="text-sm text-gray-500 pl-11 md:pl-0 hidden md:block">
-                        {formatDate(project.endDate)}
-                      </span>
-
-                      {/* Status */}
-                      <div className="pl-11 md:pl-0">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${st.color} ${st.bg} ${st.border}`}
-                        >
-                          {st.label}
+                        {/* Cliente */}
+                        <span className="text-sm text-gray-400 truncate pl-11 md:pl-0 cursor-pointer">
+                          {project.client}
                         </span>
+
+                        {/* Início */}
+                        <span className="text-sm text-gray-500 pl-11 md:pl-0 hidden md:block cursor-pointer">
+                          {formatDate(project.startDate)}
+                        </span>
+
+                        {/* Fim */}
+                        <span className="text-sm text-gray-500 pl-11 md:pl-0 hidden md:block cursor-pointer">
+                          {formatDate(project.endDate)}
+                        </span>
+
+                        {/* Status */}
+                        <div className="pl-11 md:pl-0 cursor-pointer">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border ${st.color} ${st.bg} ${st.border}`}
+                          >
+                            {st.label}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Ações — edit + delete */}
+                      <div className="flex items-center gap-1.5 pl-11 md:pl-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                        <button
+                          onClick={(e) => handleEditProject(project, e)}
+                          title="Editar projeto"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteProject(project.id, e)}
+                          title="Excluir projeto"
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -395,8 +528,23 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
         </div>
 
         {showModal && (
-          <NewProjectModal onClose={() => setShowModal(false)} onSave={handleSaveProject} />
+          <ProjectFormModal onClose={() => setShowModal(false)} onSave={handleSaveProject} />
         )}
+        {editingProject && (
+          <ProjectFormModal
+            onClose={() => setEditingProject(null)}
+            onSave={handleSaveEditedProject}
+            initialData={editingProject}
+          />
+        )}
+
+        {/* TODO: Inserir link do tutorial gravado */}
+        <TutorialModal
+          isOpen={isTutorialOpen}
+          onClose={() => setIsTutorialOpen(false)}
+          title="Tutorial — Assistente Executivo"
+          videoUrl="https://www.youtube.com/embed/dQw4w9WgXcQ"
+        />
       </div>
     );
   }
@@ -427,18 +575,38 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
 
         {/* Sidebar header */}
         <div className="flex-shrink-0 px-4 pt-5 pb-4 border-b border-gray-800/50">
-          <button
-            onClick={handleBackToLobby}
-            className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-gray-400 transition-colors mb-4"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Voltar ao Lobby
-          </button>
+          {/* Only admins can navigate back to the project lobby */}
+          {viewRole === 'admin' && (
+            <button
+              onClick={handleBackToLobby}
+              className="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-gray-400 transition-colors mb-4"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Voltar ao Lobby
+            </button>
+          )}
 
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center flex-shrink-0">
-              <Briefcase className="w-4 h-4 text-white" />
-            </div>
+            {/* Client logo — click to upload */}
+            <label className="relative group cursor-pointer flex-shrink-0 w-9 h-9">
+              {project.clientLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={project.clientLogo}
+                  alt="Logo cliente"
+                  className="w-9 h-9 rounded-xl object-contain bg-gray-800 border border-gray-700/50"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center">
+                  <Briefcase className="w-4 h-4 text-white" />
+                </div>
+              )}
+              {/* Upload overlay on hover */}
+              <div className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <Upload className="w-3 h-3 text-white" />
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+            </label>
             <div className="min-w-0">
               <h1 className="text-sm font-bold text-white truncate leading-tight">{project.name}</h1>
               <p className="text-[10px] text-gray-500 truncate mt-0.5">{project.client}</p>
@@ -532,17 +700,17 @@ export default function ExecutiveAssistantView({ onBack }: ExecutiveAssistantVie
         {/* Content area */}
         <main className="flex-1 overflow-hidden bg-gray-900 flex flex-col">
           {activeModule === 'monitoramento' ? (
-            <ExecutiveMonitoringCenter project={project} />
+            <ExecutiveMonitoringCenter project={project} isAdmin={viewRole === 'admin'} />
           ) : activeModule === 'orcamento' ? (
             <ExecutiveBudgetSheet project={project} onUpdate={handleUpdateProject} />
           ) : activeModule === 'equipe' ? (
-            <ExecutiveTeamManagement project={project} onUpdate={handleUpdateProject} readOnly={viewRole === 'member'} />
+            <ExecutiveTeamManagement project={project} onUpdate={handleUpdateProject} isAdmin={viewRole === 'admin'} />
           ) : activeModule === 'cronograma' ? (
-            <ExecutiveSchedule project={project} onUpdate={handleUpdateProject} />
+            <ExecutiveSchedule project={project} onUpdate={handleUpdateProject} isAdmin={viewRole === 'admin'} />
           ) : activeModule === 'documentos' ? (
-            <ExecutiveDocuments project={project} onUpdate={handleUpdateProject} />
+            <ExecutiveDocuments project={project} onUpdate={handleUpdateProject} isAdmin={viewRole === 'admin'} />
           ) : activeModule === 'financeiro' ? (
-            <ExecutiveFinancialControl project={project} onUpdate={handleUpdateProject} />
+            <ExecutiveFinancialControl project={project} onUpdate={handleUpdateProject} isAdmin={viewRole === 'admin'} />
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center px-6">

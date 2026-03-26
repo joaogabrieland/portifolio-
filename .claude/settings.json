@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -i ~/.ssh/id_creatorflow ubuntu@44.221.208.38 \"cd ~/creatorflow && git pull && npm run build 2>&1 | grep -E ''\\(✓|error|failed\\)'' | tail -3 && docker compose -f docker-compose.prod.yml up -d --build app 2>&1 | tail -4\")",
+      "Bash(npm run build)",
+      "Bash(ls /Users/fabricadeideias/creatorflow/docker-compose*.yml)",
+      "Bash(brew services list)",
+      "Bash(pg_isready)",
+      "Bash(git add middleware.ts lib/hooks/useClientData.ts lib/hooks/useUserData.ts)",
+      "Bash(git add app/api/clients/[clientId]/data/[dataType]/route.ts app/api/clients/[clientId]/route.ts app/api/user-data/[dataType]/route.ts)",
+      "Bash(grep -n \"^[[:space:]]*>[[:space:]]*$\" /Users/fabricadeideias/creatorflow/components/ClientDashboard.tsx)",
+      "Bash(ls /Users/fabricadeideias/creatorflow/*.config* /Users/fabricadeideias/creatorflow/postcss.config*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); deps={**d.get\\(''dependencies'',{}\\),**d.get\\(''devDependencies'',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if ''tailwind'' in k or ''postcss'' in k]\")"
+    ]
+  }
+}

@@ -4,10 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import React from 'react';
 import { fetchClientData, saveClientData } from '@/lib/clients-api';
 import { ArrowLeft, Send, Trash2, StopCircle, ImageIcon, X, Lightbulb, Volume2, Check, CheckCircle2, History, Plus, MessageSquare, Keyboard, Sparkles, PlayCircle, ThumbsUp, ThumbsDown, UserPlus, UserCircle, ChevronRight, Mic, Loader2, Maximize2, Minimize2, Clock, Copy, ExternalLink, Wand2, Monitor, Zap, ListChecks, Palette, Printer, Upload, Play, Layers, Film, Pause, Music, FolderInput } from 'lucide-react';
-import { AgentConfig, AgentId, Message, StylePreset, ChatSession, InstagramProfile, ShotList, ShotItem, BrandKit, Client } from '@/types';
+import { AgentConfig, AgentId, Message, StylePreset, ChatSession, InstagramProfile, ShotList, ShotItem, BrandKit, Client, StudioProfile } from '@/types';
 import { sendMessageToAgent, transcribeAudio, LimitReachedData } from '@/lib/api';
 import MarkdownRenderer from './MarkdownRenderer';
 import CreatorStockView from './CreatorStockView';
+import ProposalWizard from './ProposalWizard';
 
 // --- DATA STRUCTURE FOR EDITING HUB ---
 const SOFTWARE_DATA = [
@@ -353,12 +354,10 @@ const EditingKnowledgeHub: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             >
                                 <div className="flex items-center gap-2"><Keyboard className="w-4 h-4"/> Atalhos Essenciais</div>
                             </button>
-                            <button 
-                                onClick={() => setActiveTab('tutorials')} 
-                                className={`pb-3 px-2 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === 'tutorials' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-zinc-400 hover:text-zinc-300'}`}
-                            >
-                                <div className="flex items-center gap-2"><PlayCircle className="w-4 h-4"/> Tutoriais e Técnicas</div>
-                            </button>
+                            <div className="pb-3 px-2 text-sm font-bold uppercase tracking-widest text-zinc-600 cursor-not-allowed pointer-events-none opacity-60 flex items-center gap-2">
+                                <PlayCircle className="w-4 h-4"/> Tutoriais e Técnicas
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-zinc-700/40 text-zinc-500 border border-zinc-700/40 uppercase tracking-widest normal-case">Em breve</span>
+                            </div>
                         </div>
 
                         {/* Shortcuts Table View */}
@@ -815,6 +814,7 @@ interface AgentViewProps {
   navigationContext?: { prompt: string } | null;
   onNavigateToAgent?: (id: AgentId, prompt: string) => void;
   clients?: Client[];
+  studioProfile?: StudioProfile;
 }
 
 // Brand Kit Form Modal
@@ -1137,7 +1137,7 @@ const DetailView: React.FC<{ preset: StylePreset; onBack: () => void; agentId: A
     );
 };
 
-const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSession, onDeleteSession, instagramProfiles = [], onSaveIGProfile, onDeleteIGProfile, onSaveShotList, brandKits = [], onSaveBrandKit, onDeleteBrandKit, navigationContext, onNavigateToAgent, clients = [] }) => {
+const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSession, onDeleteSession, instagramProfiles = [], onSaveIGProfile, onDeleteIGProfile, onSaveShotList, brandKits = [], onSaveBrandKit, onDeleteBrandKit, navigationContext, onNavigateToAgent, clients = [], studioProfile }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [limitReached, setLimitReached] = useState<LimitReachedData | null>(null);
@@ -1150,6 +1150,9 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   const [imageSize, setImageSize] = useState<"1K" | "2K" | "4K">("1K");
   const [isFocusMode, setIsFocusMode] = useState(false);
   
+  // Equipment-aware script generation toggle
+  const [useEquipment, setUseEquipment] = useState(false);
+
   // Brand Kit State
   const [activeBrandKitId, setActiveBrandKitId] = useState<string | null>(null);
   const [isBrandKitModalOpen, setIsBrandKitModalOpen] = useState(false);
@@ -1379,6 +1382,19 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
           - Hashtags/Keywords: ${activeProfile.hashtags}`;
       }
 
+      if (agent.id === AgentId.SCRIPT_GENERATOR && useEquipment && studioProfile) {
+          const eq = studioProfile.equipment;
+          const lines: string[] = [];
+          if (eq.cameras?.length)  lines.push(`- Câmeras: ${eq.cameras.join(', ')}`);
+          if (eq.lenses?.length)   lines.push(`- Lentes: ${eq.lenses.join(', ')}`);
+          if (eq.audio?.length)    lines.push(`- Áudio: ${eq.audio.join(', ')}`);
+          if (eq.lighting?.length) lines.push(`- Iluminação: ${eq.lighting.join(', ')}`);
+          if (eq.others?.length)   lines.push(`- Outros: ${eq.others.join(', ')}`);
+          if (lines.length > 0) {
+              customInstruction = `${customInstruction}\n\n⚠️ ATENÇÃO — LIMITAÇÕES TÉCNICAS DO USUÁRIO:\nO inventário atual do criador é:\n${lines.join('\n')}\nVocê DEVE adaptar TODAS as sugestões de gravação, iluminação, ângulos de câmera e complexidade das cenas EXCLUSIVAMENTE para o que é possível realizar com este equipamento. Se ele não tem drone, NÃO sugira cenas aéreas. Se não tem iluminação artificial, sugira luz natural. Se usa celular, adapte para ângulos simples e montagem leve. Mantenha as cenas realizáveis dentro deste kit.`;
+          }
+      }
+
       if (isBudgetAgent && activeBrandKit) {
           customInstruction = `${agent.systemInstruction}\n\n⚠️ USER SELECTED BRAND KIT CONTEXT:
           - Company Name: ${activeBrandKit.name}
@@ -1551,6 +1567,11 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
   // --- NEW: INTERCEPT SFX LIBRARY VIEW ---
   if (agent.id === AgentId.SFX_LIBRARY) {
       return <CreatorStockView onBack={onBack} />;
+  }
+
+  // --- NEW: INTERCEPT BUDGET SHEET (PROPOSAL WIZARD) ---
+  if (isBudgetAgent) {
+      return <ProposalWizard onBack={onBack} />;
   }
 
   if (viewingPreset) return <DetailView preset={viewingPreset} onBack={() => setViewingPreset(null)} agentId={agent.id} />;
@@ -1927,6 +1948,35 @@ const AgentView: React.FC<AgentViewProps> = ({ agent, onBack, sessions, onSaveSe
                         </button>
                     ))}
                 </div>
+            </div>
+          )}
+
+          {agent.id === AgentId.SCRIPT_GENERATOR && !isInputExpanded && (
+            <div className="flex items-center justify-between px-1 mb-1 animate-in fade-in duration-300">
+              <label className="flex items-center gap-2 cursor-pointer select-none" htmlFor="use-equipment-toggle">
+                <div
+                  id="use-equipment-toggle"
+                  role="switch"
+                  aria-checked={useEquipment}
+                  onClick={() => setUseEquipment(v => !v)}
+                  className={`relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${useEquipment ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${useEquipment ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+                <span className={`text-xs font-bold transition-colors ${useEquipment ? 'text-indigo-300' : 'text-zinc-500'}`}>
+                  Adaptar roteiro para os meus equipamentos
+                </span>
+              </label>
+              {useEquipment && studioProfile && (
+                <span className="text-[10px] text-indigo-400 font-bold bg-indigo-900/20 border border-indigo-800/40 px-2 py-0.5 rounded-full ml-2 whitespace-nowrap">
+                  Kit ativo
+                </span>
+              )}
+              {useEquipment && !studioProfile && (
+                <span className="text-[10px] text-amber-400 font-bold bg-amber-900/20 border border-amber-800/40 px-2 py-0.5 rounded-full ml-2 whitespace-nowrap">
+                  Configure o Estúdio primeiro
+                </span>
+              )}
             </div>
           )}
 

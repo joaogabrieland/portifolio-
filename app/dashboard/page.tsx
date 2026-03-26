@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AGENTS } from '@/lib/constants';
 import { AgentId, ChatSession, InstagramProfile, ShotList, BrandKit, HDD, Recording, StudioProfile, Client } from '@/types';
 import { useIara } from '@/components/IaraContext';
+import { useAgency } from '@/components/AgencyContext';
 import { fetchClients, createClient, deleteClientAPI, migrateFromLocalStorage, fetchUserData, saveUserData } from '@/lib/clients-api';
 import AgentView from '@/components/AgentView';
 import ShotListManager from '@/components/ShotListManager';
@@ -13,10 +15,11 @@ import HubArquivos from '@/components/HubArquivos';
 import ClientsHub from '@/components/ClientsHub';
 import CreatorStockView from '@/components/CreatorStockView';
 import ExecutiveAssistantView from '@/components/ExecutiveAssistantView';
+import TutorialModal, { TutorialButton } from '@/components/TutorialModal';
 import { isAdminEmail } from '@/lib/admin-emails';
 import StudioProfileModal from '@/components/StudioProfileModal';
 import AuthGuard from '@/components/auth/AuthGuard';
-import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield } from 'lucide-react';
+import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield, FilePen } from 'lucide-react';
 
 const STORAGE_KEY = 'creator_flow_history_v2';
 const PROFILES_KEY = 'creator_flow_ig_profiles';
@@ -31,7 +34,7 @@ const CLIENTS_KEY = 'creator_flow_clients';
 const INITIAL_STUDIO: StudioProfile = {
   name: '',
   type: '',
-  equipment: { cameras: [], lenses: [], audio: [], lighting: [] },
+  equipment: { cameras: [], lenses: [], audio: [], lighting: [], others: [] },
 };
 
 // --- SUPPORT MODAL COMPONENT ---
@@ -206,6 +209,10 @@ export default function DashboardPage() {
   // Referral Modal State
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
 
+  // Tutorial Modal State
+  const [isDashboardTutorialOpen, setIsDashboardTutorialOpen] = useState(false);
+  const [isCriacaoTutorialOpen,   setIsCriacaoTutorialOpen]   = useState(false);
+
   // Payment success toast
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
@@ -260,6 +267,11 @@ export default function DashboardPage() {
   const [userPlan, setUserPlan] = useState('');
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+
+  // RBAC — sourced from AgencyContext (global, persisted).
+  // Default: admin (true) — so the owner never loses access before hydration.
+  const { currentUser, signOut: agencySignOut } = useAgency();
+  const isAdmin = currentUser ? currentUser.role !== 'user' : true;
 
   const dashboardInitRef = useRef(false);
   useEffect(() => {
@@ -360,7 +372,14 @@ export default function DashboardPage() {
     }
     const savedStudio = localStorage.getItem(STUDIO_KEY);
     if (savedStudio) {
-      try { setStudioProfile(JSON.parse(savedStudio)); } catch (e) { console.error(e); }
+      try {
+        const parsed = JSON.parse(savedStudio);
+        // Backward compat: ensure `others` field exists for existing profiles
+        if (parsed.equipment && !parsed.equipment.others) {
+          parsed.equipment.others = [];
+        }
+        setStudioProfile(parsed);
+      } catch (e) { console.error(e); }
     }
 
     // Load clients from API (DB) instead of localStorage
@@ -638,7 +657,7 @@ export default function DashboardPage() {
   const handleShare = async () => {
     try {
       const link = dashboardPortalToken
-        ? `https://creatorflowia.com/cliente/${dashboardPortalToken}`
+        ? `${window.location.origin}/cliente/${dashboardPortalToken}`
         : window.location.href;
       await navigator.clipboard.writeText(link);
       setShowLinkCopied(true);
@@ -811,6 +830,19 @@ export default function DashboardPage() {
       )}
       <SupportModal isOpen={isSupportModalOpen} onClose={() => setIsSupportModalOpen(false)} />
       <ReferralModal isOpen={isReferralModalOpen} onClose={() => setIsReferralModalOpen(false)} />
+      {/* TODO: Inserir link do tutorial gravado */}
+      <TutorialModal
+        isOpen={isDashboardTutorialOpen}
+        onClose={() => setIsDashboardTutorialOpen(false)}
+        title="Tutorial — Dashboard CreatorFlow"
+        videoUrl="https://www.youtube.com/embed/dQw4w9WgXcQ"
+      />
+      <TutorialModal
+        isOpen={isCriacaoTutorialOpen}
+        onClose={() => setIsCriacaoTutorialOpen(false)}
+        title="Tutorial — Central de Criação"
+        videoUrl="https://www.youtube.com/embed/dQw4w9WgXcQ"
+      />
       <StudioProfileModal
         isOpen={isStudioModalOpen}
         profile={studioProfile}
@@ -842,6 +874,7 @@ export default function DashboardPage() {
           navigationContext={navigationContext}
           onNavigateToAgent={handleNavigateToAgent}
           clients={clients}
+          studioProfile={studioProfile}
         />
       ) : isProductionHubOpen ? (
           <main className="min-h-screen bg-zinc-950 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -849,9 +882,12 @@ export default function DashboardPage() {
                 <ArrowLeft className="w-5 h-5" />
                 <span>Voltar ao Dashboard</span>
             </button>
-            <div className="mb-12">
-                <h1 className="text-3xl font-bold text-white mb-2">Central de Criação</h1>
-                <p className="text-zinc-400">Ferramentas criativas para planejar e executar seus vídeos.</p>
+            <div className="mb-12 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-2">Central de Criação</h1>
+                  <p className="text-zinc-400">Ferramentas criativas para planejar e executar seus vídeos.</p>
+                </div>
+                <TutorialButton onClick={() => setIsCriacaoTutorialOpen(true)} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[AgentId.SCRIPT_GENERATOR, AgentId.SHOT_LIST, AgentId.MEDIA_ASSISTANT, AgentId.STORYBOARD_GENERATOR].map(id => {
@@ -914,8 +950,12 @@ export default function DashboardPage() {
                 {[AgentId.EDITING_SHORTCUTS, AgentId.EDITING_IDEA, AgentId.EDITING_TECHNIQUES].map(id => {
                     const agent = AGENTS[id];
                     const Icon = agent.icon;
+                    const isDisabled = id === AgentId.EDITING_TECHNIQUES;
                     return (
-                        <button key={id} onClick={() => handleSubAgentClick(id)} className="flex flex-col p-6 bg-zinc-900 border border-zinc-800 rounded-2xl hover:border-blue-500 transition-all duration-300 text-left group shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]">
+                        <button key={id} onClick={isDisabled ? undefined : () => handleSubAgentClick(id)} disabled={isDisabled} className={`relative flex flex-col p-6 bg-zinc-900 border border-zinc-800 rounded-2xl transition-all duration-300 text-left shadow-lg ${isDisabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : 'hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]'}`}>
+                            {isDisabled && (
+                                <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-zinc-600/40 text-zinc-400 border border-zinc-600/40 uppercase tracking-widest">Em Breve</span>
+                            )}
                             <div className={`p-4 rounded-xl bg-zinc-800 w-fit mb-4 ${agent.color}`}>
                                 <Icon className="w-8 h-8" />
                             </div>
@@ -937,6 +977,8 @@ export default function DashboardPage() {
           onBack={handleBack}
           onNavigateToArquivos={() => { setIsClientesHubOpen(false); setIsArquivosHubOpen(true); }}
           onOpenBudgetSheet={() => { setIsClientesHubOpen(false); setActiveAgentId(AgentId.BUDGET_SHEET); }}
+          onLinkCopied={() => { setShowLinkCopied(true); setTimeout(() => setShowLinkCopied(false), 2500); }}
+          isAdmin={isAdmin}
         />
      ) : isArquivosHubOpen ? (
         <HubArquivos
@@ -972,13 +1014,13 @@ export default function DashboardPage() {
                     <p className="text-zinc-400 leading-relaxed mb-6">Envie uma foto do seu cenário e equipamentos. A IA analisará o ambiente e criará um diagrama de luz personalizado.</p>
                     <span className="mt-auto text-yellow-400 font-medium flex items-center gap-2">Criar Setup <ChevronRight className="w-4 h-4" /></span>
                 </button>
-                <button onClick={() => { setIsLightingHubOpen(false); setActiveAgentId(AgentId.LIGHTING_STYLES); }} className="relative flex flex-col p-8 bg-zinc-900 border border-zinc-800 rounded-2xl hover:border-orange-500 transition-all duration-300 text-left group shadow-lg hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-10"><div className="bg-zinc-100 text-zinc-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1.5 whitespace-nowrap border border-zinc-300"><Sparkles className="w-3 h-3 text-orange-400" /><span>6 Estilos Clássicos</span></div><div className="w-2 h-2 bg-zinc-100 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1 border-r border-b border-zinc-300"></div></div>
+                <div className="relative flex flex-col p-8 bg-zinc-900 border border-zinc-800 rounded-2xl text-left shadow-lg opacity-60 cursor-not-allowed pointer-events-none">
+                    <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-zinc-600/40 text-zinc-400 border border-zinc-600/40 uppercase tracking-widest">Em Breve</span>
                     <div className="p-4 rounded-xl bg-orange-500/10 text-orange-400 w-fit mb-6"><BookOpen className="w-10 h-10" /></div>
                     <h2 className="text-2xl font-bold text-white mb-3">Iluminações Famosas</h2>
                     <p className="text-zinc-400 leading-relaxed mb-6">Explore uma galeria interativa com estilos cinematográficos clássicos. Aprenda a recriar looks icônicos.</p>
                     <span className="mt-auto text-orange-400 font-medium flex items-center gap-2">Explorar Estilos <ChevronRight className="w-4 h-4" /></span>
-                </button>
+                </div>
             </div>
           </main>
       ) : (
@@ -997,11 +1039,20 @@ export default function DashboardPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
               </a>
-              <div className="w-9 h-9 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-gray-200 select-none">
-                  {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
-                </span>
-              </div>
+              {currentUser?.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentUser.avatar}
+                  alt="Avatar"
+                  className="w-9 h-9 rounded-full object-cover border border-gray-600 flex-shrink-0"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-gray-200 select-none">
+                    {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                  </span>
+                </div>
+              )}
               <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
             </div>
             {/* Right: actions */}
@@ -1036,8 +1087,9 @@ export default function DashboardPage() {
                 <Gift className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Indique e Ganhe</span>
               </button>
+              <TutorialButton onClick={() => setIsDashboardTutorialOpen(true)} />
               <button
-                onClick={() => { localStorage.removeItem('cf_token'); localStorage.removeItem('cf_email'); localStorage.removeItem('cf_name'); localStorage.removeItem('cf_plan'); router.push('/login'); }}
+                onClick={() => { agencySignOut(); router.push('/login'); }}
                 className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-900/10 transition-all"
                 title="Sair"
               >
@@ -1160,11 +1212,8 @@ export default function DashboardPage() {
               )}
 
               {/* Creator Stock */}
-              <button
-                onClick={() => setIsCreatorStockOpen(true)}
-                className="group relative bg-gradient-to-b from-purple-900/20 to-transparent border border-purple-900/50 hover:border-purple-500/50 rounded-2xl p-6 flex flex-col items-start text-left transition-all duration-300 hover:bg-purple-900/10"
-              >
-                <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-widest">
+              <div className="relative bg-gradient-to-b from-purple-900/20 to-transparent border border-purple-900/50 rounded-2xl p-6 flex flex-col items-start text-left opacity-60 cursor-not-allowed pointer-events-none">
+                <span className="absolute top-3 right-3 text-[9px] font-black px-2 py-0.5 rounded-full bg-zinc-600/40 text-zinc-400 border border-zinc-600/40 uppercase tracking-widest">
                   Em Breve
                 </span>
                 <div className="p-2.5 rounded-xl bg-purple-900/30 border border-purple-800/50 mb-4">
@@ -1172,10 +1221,10 @@ export default function DashboardPage() {
                 </div>
                 <h3 className="text-base font-bold text-white mb-1.5">Creator Stock</h3>
                 <p className="text-sm text-gray-400 leading-relaxed mb-4">Banco de referências visuais, sons e elementos para turbinar sua produção.</p>
-                <span className="mt-auto flex items-center gap-1.5 text-purple-400 text-xs font-bold group-hover:gap-2.5 transition-all">
+                <span className="mt-auto flex items-center gap-1.5 text-purple-400 text-xs font-bold">
                   Acessar <ChevronRight className="w-3.5 h-3.5" />
                 </span>
-              </button>
+              </div>
             </div>
 
             {/* Search */}
@@ -1192,7 +1241,7 @@ export default function DashboardPage() {
             {/* Gestão & CRM */}
             <div className="w-full mb-12">
               <h2 className="text-xs font-bold tracking-wider text-gray-500 mb-4 uppercase">Gestão & CRM</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button
                   onClick={() => setIsArquivosHubOpen(true)}
                   className="group bg-[#0a0a0a] border border-white/5 hover:border-white/20 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300"
@@ -1229,6 +1278,21 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Controle de receitas, despesas e precificação.</p>
                   </div>
                 </div>
+                <Link
+                  href="/dashboard/gerador-contratos"
+                  className="group bg-[#0a0a0a] border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300 hover:bg-purple-500/5"
+                >
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex-shrink-0 group-hover:bg-purple-500/15 transition-colors">
+                    <FilePen className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-bold text-white">Gerador de Contratos</h3>
+                      <span className="bg-purple-500/15 border border-purple-500/30 text-[10px] px-2 py-1 rounded text-purple-300">Novo ✨</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">Crie contratos jurídicos blindados em formato de quiz em poucos cliques.</p>
+                  </div>
+                </Link>
               </div>
             </div>
 
@@ -1274,7 +1338,7 @@ export default function DashboardPage() {
                   <div className="p-2 rounded-lg bg-purple-500/10 flex-shrink-0">
                     <Image className="w-4 h-4 text-purple-400" />
                   </div>
-                  <span className="text-xs font-medium text-gray-400 group-hover:text-white transition-colors truncate">Gerador de Imagens</span>
+                  <span className="text-xs font-medium text-gray-400 group-hover:text-white transition-colors truncate">Prompt para Imagem</span>
                 </button>
                 <button
                   onClick={() => handleAgentClick(AgentId.VIDEO_PROMPTS)}

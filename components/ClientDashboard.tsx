@@ -68,6 +68,7 @@ import {
   Pencil,
   User,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -87,7 +88,7 @@ interface ClientDashboardProps {
 // ─────────────────────────────────────────────
 // Tab definition
 // ─────────────────────────────────────────────
-type TabId = 'visao_geral' | 'ideias' | 'roteiros' | 'kanban' | 'agenda' | 'acervo' | 'entregas' | 'reunioes' | 'financeiro' | 'cerebro_da_marca';
+type TabId = 'visao_geral' | 'ideias' | 'roteiros' | 'kanban' | 'agenda' | 'acervo' | 'entregas' | 'reunioes' | 'financeiro' | 'documentos' | 'cerebro_da_marca';
 
 interface Tab {
   id: TabId;
@@ -104,8 +105,9 @@ const TABS: Tab[] = [
   { id: 'acervo',      label: 'Acervo e HDs',           icon: HardDrive       },
   { id: 'entregas',    label: 'Entregas',               icon: UploadCloud     },
   { id: 'reunioes',    label: 'Reuniões',               icon: Users           },
-  { id: 'financeiro',      label: 'Financeiro & Métricas',  icon: TrendingUp  },
-  { id: 'cerebro_da_marca', label: 'Cérebro da Marca',      icon: Brain       },
+  { id: 'financeiro',       label: 'Financeiro & Métricas',  icon: TrendingUp  },
+  { id: 'documentos',       label: 'Documentos',             icon: Folder      },
+  { id: 'cerebro_da_marca', label: 'Cérebro da Marca',       icon: Brain       },
 ];
 
 // ─────────────────────────────────────────────
@@ -5943,6 +5945,114 @@ function useSidebarHealth(clientId: string): number {
 }
 
 // ─────────────────────────────────────────────
+// TAB: Documentos (Agency side)
+// ─────────────────────────────────────────────
+interface DocItem {
+  id: string;
+  name: string;
+  date: string;
+  size: string;
+}
+
+const ClientDocumentosTab: React.FC<{ client: Client }> = ({ client: _client }) => {
+  const [docs, setDocs] = useState<DocItem[]>([]);
+
+  const handleDelete = (id: string) => setDocs(prev => prev.filter(d => d.id !== id));
+
+  return (
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
+        <div>
+          <h2 className="text-xl font-extrabold text-white tracking-tight">Documentos e Contratos</h2>
+          <p className="text-sm text-gray-500 mt-1">Gira os ficheiros legais e partilhe com o cliente.</p>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <label className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-700 bg-gray-800/60 text-sm font-bold text-gray-300 hover:bg-gray-700 hover:text-white transition-all duration-150 cursor-pointer">
+            <UploadCloud className="w-4 h-4" />
+            Fazer Upload
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const newDoc: DocItem = {
+                  id: Date.now().toString(),
+                  name: file.name,
+                  date: new Date().toLocaleDateString('pt-BR'),
+                  size: file.size > 1024 * 1024
+                    ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                    : `${Math.ceil(file.size / 1024)} KB`,
+                };
+                setDocs(prev => [newDoc, ...prev]);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <a
+            href="/dashboard/gerador-contratos"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white transition-all duration-150 shadow-lg shadow-indigo-900/30"
+          >
+            <FileText className="w-4 h-4" />
+            Gerar Contrato
+          </a>
+        </div>
+      </div>
+
+      {/* Document list */}
+      {docs.length === 0 ? (
+        <div className="flex items-center justify-center rounded-2xl border border-gray-800/60 bg-gray-900/30 py-24 text-center">
+          <p className="text-sm text-gray-600">
+            Nenhum documento ou contrato vinculado a este cliente.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {docs.map(doc => (
+            <div
+              key={doc.id}
+              className="group flex items-center gap-4 px-5 py-4 rounded-2xl border border-gray-800/70 bg-gray-900/60 hover:bg-gray-800/60 hover:border-gray-700/70 transition-all duration-150"
+            >
+              {/* PDF icon */}
+              <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center bg-red-500/10 border border-red-500/20">
+                <FileText className="w-5 h-5 text-red-400" />
+              </div>
+
+              {/* Meta */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{doc.name}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{doc.date} · {doc.size}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <button
+                  onClick={() => window.open('#', '_blank')}
+                  className="p-2 rounded-lg text-gray-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                  title="Descarregar"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────
 const ClientDashboard: React.FC<ClientDashboardProps> = ({ client, onBack, onNavigateToArquivos }) => {
@@ -6341,7 +6451,7 @@ Retorne APENAS JSON válido, sem markdown, no formato exato:
           {TABS.map((tab, i) => {
             const isActive = activeTab === tab.id;
             /* separator before secondary tabs */
-            const showSep = i === 5 || i === 9; // before 'acervo' and before 'cerebro_da_marca'
+            const showSep = i === 5 || i === 10; // before 'acervo' and before 'cerebro_da_marca'
             return (
               <React.Fragment key={tab.id}>
                 {showSep && (
@@ -6992,6 +7102,13 @@ Retorne APENAS JSON válido, sem markdown, no formato exato:
           {activeTab === 'financeiro' && (
             <div className="animate-in fade-in duration-200">
               <ClientFinanceiroTab client={client} />
+            </div>
+          )}
+
+          {/* ══ TAB: Documentos ══ */}
+          {activeTab === 'documentos' && (
+            <div className="animate-in fade-in duration-200">
+              <ClientDocumentosTab client={client} />
             </div>
           )}
 

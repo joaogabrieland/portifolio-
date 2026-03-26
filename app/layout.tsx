@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Providers from './providers';
 
 export const metadata: Metadata = {
   title: 'CreatorFlow AI',
@@ -24,7 +25,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

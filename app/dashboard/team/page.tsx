@@ -1,19 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Users, UserPlus, MessageCircle, Copy, Check, X, Link } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  whatsapp: string;
-  initials: string;
-  bgCls: string;
-  textCls: string;
-}
+import { useAgency } from '@/components/AgencyContext';
 
 const COLOR_SETS = [
   { bgCls: 'bg-violet-900/40 border-violet-800/40', textCls: 'text-violet-300' },
@@ -22,35 +13,17 @@ const COLOR_SETS = [
   { bgCls: 'bg-amber-900/40 border-amber-800/40', textCls: 'text-amber-300' },
 ];
 
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+}
+
 export default function TeamPage() {
   const router = useRouter();
+  const { teamMembers } = useAgency();
   const [inviteUrl, setInviteUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-
-  useEffect(() => {
-    const ownerName = localStorage.getItem('cf_name') || 'Você';
-    const ownerEmail = localStorage.getItem('cf_email') || '';
-    const initials = ownerName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-    setTeamMembers([{
-      id: 'owner', name: ownerName, role: 'Proprietário', whatsapp: '',
-      initials, ...COLOR_SETS[0],
-    }]);
-    // Fetch real team invites
-    const token = localStorage.getItem('cf_token');
-    if (token) {
-      fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.inviteUrl) {
-            // Team members come from invites - for now show owner only
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
 
   async function handleInvite() {
     setLoading(true);
@@ -116,44 +89,61 @@ export default function TeamPage() {
 
           {/* Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {teamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="group bg-white/[0.03] border border-white/8 hover:border-white/15 rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300"
-              >
-                {/* Top row: avatar + status badge */}
-                <div className="flex items-start justify-between">
-                  <div
-                    className={`w-14 h-14 rounded-2xl border flex items-center justify-center flex-shrink-0 ${member.bgCls}`}
-                  >
-                    <span className={`text-lg font-bold ${member.textCls}`}>
-                      {member.initials}
+            {teamMembers.map((member, idx) => {
+              const colors = COLOR_SETS[idx % COLOR_SETS.length];
+              const initials = getInitials(member.name);
+              const whatsapp = (member as { whatsapp?: string }).whatsapp ?? '';
+
+              return (
+                <div
+                  key={member.id}
+                  className="group bg-white/[0.03] border border-white/8 hover:border-white/15 rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300"
+                >
+                  {/* Top row: avatar + status badge */}
+                  <div className="flex items-start justify-between">
+                    {member.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="w-14 h-14 rounded-2xl object-cover border border-white/10 flex-shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className={`w-14 h-14 rounded-2xl border flex items-center justify-center flex-shrink-0 ${colors.bgCls}`}
+                      >
+                        <span className={`text-lg font-bold ${colors.textCls}`}>
+                          {initials}
+                        </span>
+                      </div>
+                    )}
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-900/20 border border-emerald-900/40 px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Ativo
                     </span>
                   </div>
-                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-900/20 border border-emerald-900/40 px-2.5 py-1 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Ativo
-                  </span>
-                </div>
 
-                {/* Name + role */}
-                <div>
-                  <h3 className="font-bold text-white text-base leading-tight">{member.name}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{member.role}</p>
-                </div>
+                  {/* Name + role */}
+                  <div>
+                    <h3 className="font-bold text-white text-base leading-tight">{member.name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {member.memberRole || (member.isOwner ? 'Proprietário' : member.role === 'admin' ? 'Admin' : 'Membro')}
+                    </p>
+                  </div>
 
-                {/* WhatsApp CTA */}
-                <a
-                  href={`https://wa.me/${member.whatsapp}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-[#25D366]/10 hover:border-[#25D366]/30 text-gray-400 hover:text-[#25D366] text-xs font-bold transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Chamar no WhatsApp
-                </a>
-              </div>
-            ))}
+                  {/* WhatsApp CTA */}
+                  <a
+                    href={whatsapp ? `https://wa.me/${whatsapp}` : '#'}
+                    target={whatsapp ? '_blank' : undefined}
+                    rel="noopener noreferrer"
+                    className="mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-[#25D366]/10 hover:border-[#25D366]/30 text-gray-400 hover:text-[#25D366] text-xs font-bold transition-all"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    Chamar no WhatsApp
+                  </a>
+                </div>
+              );
+            })}
           </div>
 
         </div>

@@ -20,11 +20,12 @@ function formatDate(dateStr: string): string {
 
 interface NewTransactionModalProps {
   categoryNames: string[];
+  teamMemberNames: string[];
   onClose: () => void;
   onSave: (t: Transaction) => void;
 }
 
-function NewTransactionModal({ categoryNames, onClose, onSave }: NewTransactionModalProps) {
+function NewTransactionModal({ categoryNames, teamMemberNames, onClose, onSave }: NewTransactionModalProps) {
   const [description, setDescription] = useState('');
   const [amount, setAmount]           = useState('');
   const [date, setDate]               = useState('');
@@ -131,13 +132,37 @@ function NewTransactionModal({ categoryNames, onClose, onSave }: NewTransactionM
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Fornecedor / Profissional
               </label>
-              <input
-                type="text"
-                value={payee}
-                onChange={e => setPayee(e.target.value)}
-                placeholder="Nome ou empresa"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
+              {teamMemberNames.length > 0 ? (
+                <div className="space-y-2">
+                  <select
+                    value={teamMemberNames.includes(payee) ? payee : '__custom__'}
+                    onChange={e => setPayee(e.target.value === '__custom__' ? '' : e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  >
+                    <option value="__custom__">— Digitar manualmente —</option>
+                    {teamMemberNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  {!teamMemberNames.includes(payee) && (
+                    <input
+                      type="text"
+                      value={payee}
+                      onChange={e => setPayee(e.target.value)}
+                      placeholder="Nome ou empresa"
+                      className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  )}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={payee}
+                  onChange={e => setPayee(e.target.value)}
+                  placeholder="Nome ou empresa"
+                  className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              )}
             </div>
           </div>
 
@@ -214,42 +239,52 @@ function NewTransactionModal({ categoryNames, onClose, onSave }: NewTransactionM
 interface Props {
   project: ExecutiveProject;
   onUpdate: (updated: ExecutiveProject) => void;
+  isAdmin?: boolean;
 }
 
-export default function ExecutiveFinancialControl({ project, onUpdate }: Props) {
+export default function ExecutiveFinancialControl({ project, onUpdate, isAdmin = true }: Props) {
   const [showModal, setShowModal] = useState(false);
-  const transactions = project.transactions ?? [];
-  const categoryNames = project.budgetCategories.map(c => c.name);
+  const transactions     = project.transactions ?? [];
+  const categoryNames    = project.budgetCategories.map(c => c.name);
+  const teamMemberNames  = project.teamMembers.map(m => m.name);
 
   // ── Aggregates ────────────────────────────────────────────────────────────────
   const totalPaid    = transactions.filter(t => t.status === 'paid').reduce((s, t) => s + t.amount, 0);
   const totalPending = transactions.filter(t => t.status === 'pending').reduce((s, t) => s + t.amount, 0);
   const totalAll     = totalPaid + totalPending;
 
+  // Helper: persist new transaction list + recalculate custoExecutado
+  const persistTransactions = useCallback(
+    (nextTx: Transaction[]) => {
+      const custoExecutado = nextTx.reduce((s, t) => s + t.amount, 0);
+      onUpdate({ ...project, transactions: nextTx, custoExecutado });
+    },
+    [project, onUpdate]
+  );
+
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleAdd = useCallback(
     (t: Transaction) => {
-      onUpdate({ ...project, transactions: [t, ...transactions] });
+      persistTransactions([t, ...transactions]);
       setShowModal(false);
     },
-    [project, transactions, onUpdate]
+    [transactions, persistTransactions]
   );
 
   const handleMarkPaid = useCallback(
     (id: string) => {
-      onUpdate({
-        ...project,
-        transactions: transactions.map(t => t.id === id ? { ...t, status: 'paid' as const } : t),
-      });
+      persistTransactions(
+        transactions.map(t => t.id === id ? { ...t, status: 'paid' as const } : t)
+      );
     },
-    [project, transactions, onUpdate]
+    [transactions, persistTransactions]
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      onUpdate({ ...project, transactions: transactions.filter(t => t.id !== id) });
+      persistTransactions(transactions.filter(t => t.id !== id));
     },
-    [project, transactions, onUpdate]
+    [transactions, persistTransactions]
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -397,7 +432,7 @@ export default function ExecutiveFinancialControl({ project, onUpdate }: Props) 
                       <CheckCircle className="w-3 h-3" />
                       Pago
                     </span>
-                  ) : (
+                  ) : isAdmin ? (
                     <button
                       onClick={() => handleMarkPaid(t.id)}
                       title="Marcar como pago"
@@ -406,17 +441,24 @@ export default function ExecutiveFinancialControl({ project, onUpdate }: Props) 
                       <Circle className="w-3 h-3" />
                       Pendente
                     </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                      <Circle className="w-3 h-3" />
+                      Pendente
+                    </span>
                   )}
                 </div>
 
                 {/* Delete */}
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Remover lançamento"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Remover lançamento"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -426,6 +468,7 @@ export default function ExecutiveFinancialControl({ project, onUpdate }: Props) 
       {showModal && (
         <NewTransactionModal
           categoryNames={categoryNames}
+          teamMemberNames={teamMemberNames}
           onClose={() => setShowModal(false)}
           onSave={handleAdd}
         />

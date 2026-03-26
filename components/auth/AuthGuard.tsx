@@ -33,7 +33,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [checked, router]);
 
   useEffect(() => {
-    const isPublic = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/#');
+    // /invite/* routes are public — new members don't have a token yet
+    const isPublic = PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/#') || pathname.startsWith('/invite/');
 
     if (isPublic) {
       setChecked(true);
@@ -47,6 +48,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('cf_token');
     if (!token) {
       router.replace('/login');
+      return;
+    }
+
+    // ⚠️ UI TEST BYPASS — bypass_member tokens are fake and can't be validated by the API.
+    // Allow them to access the dashboard directly so RBAC UI can be tested.
+    // Remove this block when real backend auth is connected.
+    if (token.startsWith('bypass_member_')) {
+      setChecked(true);
       return;
     }
 
@@ -74,6 +83,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('cf_email', email);
         localStorage.setItem('cf_name', data.user.name || '');
         localStorage.setItem('cf_plan', data.user.plan || '');
+        // Always write cf_role so stale values from invite-bypass tests are overwritten
+        localStorage.setItem('cf_role', isAdminEmail(email) ? 'admin' : 'user');
 
         // Admin bypass — NEVER check subscription for admin emails
         if (isAdminEmail(email)) {

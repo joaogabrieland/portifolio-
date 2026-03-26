@@ -76,6 +76,7 @@ export interface StudioProfile {
     lenses: string[];
     audio: string[];
     lighting: string[];
+    others: string[];
   };
 }
 
@@ -245,6 +246,8 @@ export interface ChatSession {
 
 export type ProjectStatus = 'pre_producao' | 'captacao' | 'pos' | 'finalizado';
 
+export type BudgetItemStatus = 'pendente' | 'aprovado' | 'recusado';
+
 export interface BudgetItem {
   id: string;
   name: string;
@@ -253,6 +256,7 @@ export interface BudgetItem {
   unitPrice: number;
   budgeted: number;     // quantity * days * unitPrice (auto-calculated)
   actualSpent: number;  // real spend (manual input)
+  status: BudgetItemStatus; // approval status (default: 'pendente')
 }
 
 export interface BudgetCategory {
@@ -261,6 +265,8 @@ export interface BudgetCategory {
   items: BudgetItem[];
 }
 
+export type MemberType = 'profissional' | 'fornecedor';
+
 export interface Freelancer {
   id: string;
   name: string;
@@ -268,6 +274,7 @@ export interface Freelancer {
   phone: string;
   email: string;
   baseDailyRate: number;
+  memberType?: MemberType;  // 'profissional' | 'fornecedor' (default: 'profissional')
 }
 
 export interface TeamMember {
@@ -280,6 +287,7 @@ export interface TeamMember {
   days: number;
   agreedRate: number;   // daily rate agreed for this project
   totalCost: number;    // days * agreedRate (auto-calculated)
+  memberType?: MemberType;
 }
 
 export type MilestoneType = 'pre_producao' | 'captacao' | 'pos';
@@ -290,6 +298,8 @@ export interface Milestone {
   date: string;         // YYYY-MM-DD
   type: MilestoneType;
   done: boolean;
+  descricao?: string;   // task briefing / details
+  linkUtil?: string;    // external link (Drive, Notion, Milanote, etc.)
 }
 
 export type DocumentType = 'documento' | 'planilha' | 'apresentacao' | 'outro';
@@ -300,6 +310,8 @@ export interface ProjectDocument {
   url: string;
   type: DocumentType;
   addedAt: number;
+  fileName?: string;    // set when added via file upload (no backend URL yet)
+  customLabel?: string; // free-text category name when type === 'outro'
 }
 
 export type TransactionStatus = 'pending' | 'paid';
@@ -328,4 +340,10 @@ export interface ExecutiveProject {
   milestones: Milestone[];
   documents: ProjectDocument[];
   transactions: Transaction[];
+  // ── Phase 1 additions ──────────────────────────────────────────────────────
+  tipoProjeto?: string;           // Publicidade | Institucional | Videoclipe | ...
+  orcamentoPreAprovado?: number;  // Client-facing approved budget (R$)
+  linkBriefing?: string;          // External briefing URL (Notion, Drive, etc.)
+  clientLogo?: string;            // Base64 DataURL or public URL
+  custoExecutado?: number;        // Phase 2: filled from transactions; Phase 1 = 0
 }

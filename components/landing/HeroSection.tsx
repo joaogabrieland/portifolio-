@@ -1,206 +1,287 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion';
-import GradientButton from './ui/GradientButton';
-import MockupChat from './MockupChat';
+import Link from 'next/link';
+import { ArrowRight, Play } from 'lucide-react';
 
-const Scene3D = dynamic(() => import('./Scene3D'), { ssr: false });
+// ─── Social proof logo placeholders ─────────────────────────────────────────
+const LOGOS = [
+  {
+    name: 'Produtora Norte',
+    svg: (
+      <svg viewBox="0 0 100 24" fill="currentColor" className="h-5">
+        <rect x="0" y="8" width="8" height="8" rx="1" />
+        <rect x="10" y="4" width="8" height="16" rx="1" />
+        <rect x="20" y="8" width="8" height="8" rx="1" />
+        <text x="32" y="17" fontSize="11" fontWeight="700" letterSpacing="1">NORTE</text>
+      </svg>
+    ),
+  },
+  {
+    name: 'Studio Alto',
+    svg: (
+      <svg viewBox="0 0 90 24" fill="currentColor" className="h-5">
+        <circle cx="12" cy="12" r="10" />
+        <text x="26" y="17" fontSize="11" fontWeight="700" letterSpacing="1">ALTO</text>
+      </svg>
+    ),
+  },
+  {
+    name: 'Frames Co',
+    svg: (
+      <svg viewBox="0 0 100 24" fill="currentColor" className="h-5">
+        <rect x="0" y="0" width="22" height="22" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+        <rect x="4" y="4" width="14" height="14" rx="1" />
+        <text x="28" y="17" fontSize="11" fontWeight="700" letterSpacing="1">FRAMES</text>
+      </svg>
+    ),
+  },
+  {
+    name: 'Motion Lab',
+    svg: (
+      <svg viewBox="0 0 110 24" fill="currentColor" className="h-5">
+        <polygon points="0,22 11,2 22,22" />
+        <text x="28" y="17" fontSize="11" fontWeight="700" letterSpacing="1">MOTION</text>
+      </svg>
+    ),
+  },
+  {
+    name: 'Visão Digital',
+    svg: (
+      <svg viewBox="0 0 100 24" fill="currentColor" className="h-5">
+        <path d="M0 12 Q11 0 22 12 Q11 24 0 12Z" />
+        <text x="28" y="17" fontSize="11" fontWeight="700" letterSpacing="1">VISÃO</text>
+      </svg>
+    ),
+  },
+];
 
 export default function HeroSection() {
   return (
-    <section className="relative z-0 isolate min-h-screen flex flex-col items-center justify-center overflow-hidden pt-28 pb-12 px-6">
-      {/* Three.js 3D background — hidden on mobile for performance */}
-      <div className="hidden md:block">
-        <Scene3D />
-      </div>
+    <>
+      {/* ── Hero Section ───────────────────────────────────────────────────────── */}
+      <section className="relative isolate min-h-screen flex items-center overflow-hidden bg-[#0B0C10] pt-24 pb-0 px-6 lg:px-12">
 
-      {/* CSS glow — more intense */}
-      <div className="pointer-events-none absolute inset-0">
-        {/* Primary center glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[700px] w-[1000px] rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.18)_0%,rgba(192,38,211,0.06)_40%,transparent_70%)]" />
-        {/* Secondary glow offset */}
-        <div className="absolute top-20 left-1/2 -translate-x-1/3 h-[500px] w-[600px] rounded-full bg-[radial-gradient(circle,rgba(192,38,211,0.1)_0%,transparent_65%)]" />
-
-        {/* HUD grid — animated with CSS */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(139,92,246,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,.3) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-        {/* Secondary smaller grid */}
-        <div
-          className="absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(139,92,246,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,.2) 1px, transparent 1px)',
-            backgroundSize: '15px 15px',
-          }}
-        />
-
-        {/* Animated floating particles */}
-        {[
-          { top: '15%', left: '20%', size: 'h-1.5 w-1.5', color: '#8B5CF6', opacity: 60, delay: '0s', dur: '4s' },
-          { top: '25%', left: '75%', size: 'h-2 w-2', color: '#C026D3', opacity: 50, delay: '1s', dur: '5s' },
-          { top: '60%', left: '12%', size: 'h-1 w-1', color: '#A78BFA', opacity: 40, delay: '2s', dur: '6s' },
-          { top: '70%', left: '85%', size: 'h-1.5 w-1.5', color: '#8B5CF6', opacity: 50, delay: '0.5s', dur: '4.5s' },
-          { top: '40%', left: '90%', size: 'h-1 w-1', color: '#C026D3', opacity: 35, delay: '1.5s', dur: '5.5s' },
-          { top: '50%', left: '8%', size: 'h-1 w-1', color: '#A78BFA', opacity: 45, delay: '3s', dur: '4s' },
-          { top: '80%', left: '30%', size: 'h-1 w-1', color: '#8B5CF6', opacity: 30, delay: '2.5s', dur: '5s' },
-          { top: '35%', left: '45%', size: 'h-1 w-1', color: '#C026D3', opacity: 25, delay: '1s', dur: '6s' },
-        ].map((p, i) => (
+        {/* Aurora glows */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* Top-left aurora */}
           <div
-            key={i}
-            className={`absolute ${p.size} rounded-full animate-pulse`}
+            className="absolute -top-40 -left-40 h-[700px] w-[700px] rounded-full opacity-30"
             style={{
-              top: p.top,
-              left: p.left,
-              backgroundColor: `${p.color}`,
-              opacity: p.opacity / 100,
-              boxShadow: `0 0 8px 3px ${p.color}60`,
-              animationDelay: p.delay,
-              animationDuration: p.dur,
+              background: 'radial-gradient(circle, rgba(109,40,217,0.5) 0%, rgba(109,40,217,0.15) 40%, transparent 70%)',
+              filter: 'blur(80px)',
             }}
           />
-        ))}
-
-        {/* Horizontal HUD lines */}
-        <div className="absolute top-[30%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#8B5CF6]/10 to-transparent" />
-        <div className="absolute top-[70%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#C026D3]/8 to-transparent" />
-        {/* Vertical HUD lines */}
-        <div className="absolute top-0 bottom-0 left-[25%] w-px bg-gradient-to-b from-transparent via-[#8B5CF6]/8 to-transparent" />
-        <div className="absolute top-0 bottom-0 right-[25%] w-px bg-gradient-to-b from-transparent via-[#C026D3]/6 to-transparent" />
-      </div>
-
-      {/* Scan lines overlay — more visible */}
-      <div
-        className="pointer-events-none absolute inset-0 z-[1] opacity-[0.025]"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 4px)',
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center">
-        {/* Top label */}
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="mb-6 text-center text-xs sm:text-sm font-medium uppercase tracking-[0.15em] text-[#A0A0A0]"
-        >
-          Fábrica de Ideias Academy apresenta
-        </motion.p>
-
-        {/* Giant title FLOW with light sweep + glitch hover */}
-        <motion.h1
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="group font-display text-center font-extrabold leading-[0.9] tracking-[-0.04em] cursor-default"
-        >
-          <span className="relative block text-[72px] sm:text-[100px] md:text-[130px] lg:text-[160px]">
-            {/* Glitch layers — visible on hover */}
-            <span className="absolute inset-0 text-[#7C3AED]/0 group-hover:text-[#7C3AED]/30 transition-all duration-100 group-hover:translate-x-[2px] group-hover:translate-y-[-2px]" aria-hidden="true">
-              FLOW
-            </span>
-            <span className="absolute inset-0 text-[#C026D3]/0 group-hover:text-[#C026D3]/20 transition-all duration-100 group-hover:translate-x-[-2px] group-hover:translate-y-[2px]" aria-hidden="true">
-              FLOW
-            </span>
-            {/* Main text */}
-            <span className="relative">
-              <span className="text-white/90">FL</span>
-              <span className="bg-gradient-to-br from-[#7C3AED] via-[#A855F7] to-[#C026D3] bg-clip-text text-transparent">
-                O
-              </span>
-              <span className="text-white/90">W</span>
-            </span>
-            {/* Light sweep overlay */}
-            <span
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none"
-              style={{
-                animation: 'lightSweep 4s ease-in-out infinite',
-                WebkitMaskImage: 'linear-gradient(to right, transparent, black 40%, black 60%, transparent)',
-                maskImage: 'linear-gradient(to right, transparent, black 40%, black 60%, transparent)',
-              }}
-            />
-          </span>
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}
-          className="mt-4 max-w-xl text-center text-base sm:text-lg text-[#A0A0A0] leading-relaxed"
-        >
-          Do primeiro briefing à aprovação final do cliente. Esqueça o caos do WhatsApp e Planilhas: gerencie equipe, orçamentos, roteiros e aprovações em um único <span className="text-white font-semibold">ecossistema premium.</span>
-        </motion.p>
-
-        {/* CTA buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.72 }}
-          className="mt-8 flex flex-col sm:flex-row items-center gap-4"
-        >
-          <GradientButton href="/dashboard" variant="solid" size="lg">
-            Começar Agora
-          </GradientButton>
-          <GradientButton href="#ferramenta" variant="outline" size="lg">
-            Explorar Módulos
-          </GradientButton>
-        </motion.div>
-      </div>
-
-      {/* Laptop mockup with 3D perspective */}
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 mt-16 w-full max-w-4xl"
-        style={{ perspective: '1200px' }}
-      >
-        {/* Glow behind laptop — more intense */}
-        <div className="absolute -inset-16 rounded-3xl bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.22)_0%,rgba(192,38,211,0.08)_35%,transparent_65%)]" />
-
-        {/* Lens flare */}
-        <div className="absolute -top-8 left-1/2 -translate-x-1/2 h-1 w-48 bg-gradient-to-r from-transparent via-[#A855F7]/50 to-transparent rounded-full blur-sm" />
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 h-0.5 w-24 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full blur-[1px]" />
-
-        {/* Laptop frame with 3D tilt */}
-        <div
-          className="relative mx-auto w-full transition-transform duration-700 hover:rotate-x-0"
-          style={{
-            transform: 'rotateX(6deg)',
-            transformStyle: 'preserve-3d',
-          }}
-        >
-          {/* Screen */}
-          <div className="relative rounded-t-xl border border-white/[0.12] bg-[#0e0e0e] overflow-hidden aspect-[16/10] shadow-[0_0_80px_rgba(139,92,246,0.1),0_20px_60px_rgba(0,0,0,0.5)]">
-            {/* Screen reflection */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none z-10" />
-
-            {/* CreatorFlow Chat UI — componente com typing animation */}
-            <MockupChat />
-          </div>
-          {/* Laptop base */}
-          <div className="mx-auto h-3 w-[102%] -ml-[1%] rounded-b-xl bg-gradient-to-b from-[#1a1a1a] to-[#141414] border-x border-b border-white/[0.06]" />
-          <div className="mx-auto h-1 w-1/5 rounded-b-lg bg-[#161616]" />
+          {/* Right center aurora */}
+          <div
+            className="absolute top-1/3 -right-60 h-[600px] w-[700px] rounded-full opacity-20"
+            style={{
+              background: 'radial-gradient(circle, rgba(16,185,129,0.4) 0%, rgba(16,185,129,0.1) 50%, transparent 70%)',
+              filter: 'blur(100px)',
+            }}
+          />
+          {/* Bottom center aurora */}
+          <div
+            className="absolute -bottom-20 left-1/3 h-[400px] w-[600px] rounded-full opacity-15"
+            style={{
+              background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)',
+              filter: 'blur(90px)',
+            }}
+          />
         </div>
 
-        {/* Reflection under laptop */}
-        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 h-40 w-4/5 bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.08)_0%,transparent_70%)]" />
-      </motion.div>
+        {/* Subtle grid */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.025]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.2) 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }}
+        />
 
-      {/* Sparkle decorations */}
-      <div className="pointer-events-none absolute bottom-24 left-[10%] text-[#8B5CF6]/30 text-lg select-none animate-pulse">&#10022;</div>
-      <div className="pointer-events-none absolute bottom-40 right-[12%] text-[#C026D3]/25 text-sm select-none animate-pulse" style={{ animationDelay: '1s' }}>&#10022;</div>
-      <div className="pointer-events-none absolute top-40 right-[8%] text-[#A78BFA]/20 text-base select-none animate-pulse" style={{ animationDelay: '2s' }}>&#10022;</div>
+        {/* ── Split layout container ──────────────────────────────────────────── */}
+        <div className="relative z-10 mx-auto w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center min-h-[calc(100vh-6rem)]">
 
-    </section>
+          {/* ── Left: Copy ────────────────────────────────────────────────────── */}
+          <div className="flex flex-col justify-center py-16 lg:py-24">
+
+            {/* Tag badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-8">
+              {[
+                { label: 'Criatividade',                   color: '#a78bfa' },
+                { label: 'Gestão de equipes e clientes',   color: '#10b981' },
+                { label: 'Orçamentos',                     color: '#0ea5e9' },
+                { label: 'Planejamento',                   color: '#f59e0b' },
+                { label: 'Controle financeiro',            color: '#c026d3' },
+              ].map((tag) => (
+                <span
+                  key={tag.label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45 transition-all duration-300 hover:border-white/[0.15] hover:text-white/70"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color, boxShadow: `0 0 6px ${tag.color}80` }} />
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+
+            {/* H1 */}
+            <h1 className="text-[2.6rem] sm:text-[3.4rem] lg:text-[3.8rem] xl:text-[4.2rem] font-extrabold leading-[1.04] tracking-tight text-white mb-7">
+              O cérebro da sua<br />
+              produtora{' '}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 50%, #c026d3 100%)' }}
+              >
+                em um só lugar.
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg text-white/50 leading-relaxed max-w-lg mb-10">
+              Centralize sua produtora em um só lugar, gerencie seus clientes, crie roteiros, organize suas equipes, gere orçamentos e propostas, e tenha a visão real da saúde do seu negócio.
+            </p>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {/* Primary — white solid (Frame.io-style high contrast) */}
+              <Link
+                href="/signup"
+                className="group inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-[15px] font-bold text-black transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] active:scale-[0.98]"
+              >
+                Começar agora
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+
+              {/* Secondary — ghost */}
+              <button
+                onClick={() => {
+                  document.querySelector('#ferramenta')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="group inline-flex items-center gap-2 rounded-xl border border-white/15 px-7 py-3.5 text-[15px] font-medium text-white/70 transition-all duration-200 hover:border-white/30 hover:text-white hover:bg-white/[0.04]"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Ver como funciona
+              </button>
+            </div>
+
+            {/* Micro social proof */}
+            <div className="mt-10 flex items-center gap-3">
+              {/* Stacked avatars */}
+              <div className="flex -space-x-2">
+                {['#7c3aed','#0ea5e9','#10b981','#f59e0b'].map((color, i) => (
+                  <div
+                    key={i}
+                    className="w-8 h-8 rounded-full border-2 border-[#0B0C10] flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ backgroundColor: color }}
+                  >
+                    {['RS','MF','AL','PV'][i]}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-white/40 leading-snug">
+                <span className="text-white/70 font-semibold">+240 produtoras</span> já usam o Creator Flow
+              </p>
+            </div>
+          </div>
+
+          {/* ── Right: Video / Product mockup ─────────────────────────────────── */}
+          <div className="relative flex items-center justify-center py-12 lg:py-16">
+
+            {/* Glow behind the container */}
+            <div
+              className="pointer-events-none absolute inset-0 -m-8"
+              style={{
+                background: 'radial-gradient(ellipse at center, rgba(109,40,217,0.18) 0%, rgba(16,185,129,0.06) 45%, transparent 70%)',
+                filter: 'blur(40px)',
+              }}
+            />
+
+            {/* Premium video container */}
+            <div
+              className="relative w-full rounded-2xl overflow-hidden border border-white/[0.08]"
+              style={{
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(109,40,217,0.12), 0 0 120px rgba(16,185,129,0.06)',
+                background: 'linear-gradient(135deg, #12131a 0%, #0e0f15 100%)',
+              }}
+            >
+              {/* Window chrome bar */}
+              <div className="flex items-center gap-1.5 px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+                <div className="flex-1 mx-3 h-5 rounded-md bg-white/[0.04] border border-white/[0.06] flex items-center px-2.5">
+                  <span className="text-[9px] text-white/25 font-mono truncate">creatorflow.app / dashboard</span>
+                </div>
+              </div>
+
+              {/* Demo video */}
+              <div className="relative aspect-[16/10] bg-[#0d0e14]">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                  src="/tela-inicial.mp4"
+                />
+              </div>
+            </div>
+
+            {/* Floating notification card — bottom-left */}
+            <div
+              className="absolute -bottom-4 -left-4 lg:-left-8 flex items-center gap-3 rounded-xl border border-white/[0.08] px-4 py-3 text-white shadow-2xl backdrop-blur-md"
+              style={{ background: 'rgba(13,14,20,0.9)' }}
+            >
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-white">Cliente aprovou ✓</p>
+                <p className="text-[10px] text-white/40">Roteiro • Marca Horizonte</p>
+              </div>
+            </div>
+
+            {/* Floating badge — top-right */}
+            <div
+              className="absolute -top-3 -right-3 lg:-right-6 rounded-xl border border-violet-500/20 px-3.5 py-2 shadow-2xl backdrop-blur-md"
+              style={{ background: 'rgba(109,40,217,0.12)' }}
+            >
+              <p className="text-[11px] font-bold text-violet-300">48h faster</p>
+              <p className="text-[9px] text-violet-400/60">ciclo de aprovação</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom fade into next section */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0B0C10] to-transparent pointer-events-none" />
+      </section>
+
+      {/* ── Social Proof Strip ──────────────────────────────────────────────────── */}
+      <section className="relative bg-[#0B0C10] border-y border-white/[0.04] py-10 px-6 overflow-hidden">
+        {/* Subtle edge gradient */}
+        <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0B0C10] to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0B0C10] to-transparent z-10 pointer-events-none" />
+
+        <div className="relative mx-auto max-w-6xl">
+          {/* Label */}
+          <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 mb-8">
+            A plataforma de confiança dos criadores mais rápidos do mercado
+          </p>
+
+          {/* Logos */}
+          <div className="flex flex-wrap items-center justify-center gap-10 md:gap-16">
+            {LOGOS.map((logo) => (
+              <div
+                key={logo.name}
+                className="text-white/20 hover:text-white/40 transition-colors duration-300 flex items-center"
+                title={logo.name}
+              >
+                {logo.svg}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
