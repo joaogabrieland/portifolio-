@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { PLANS, PlanKey } from '@/lib/stripe';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { logSecurityEvent } from '@/lib/audit-log';
 
 export type AuthResult =
   | { userId: string; plan: PlanKey }
@@ -12,9 +13,14 @@ export type AuthResult =
  * Extracts userId from Bearer token and verifies the user has an active
  * subscription with CRM access (Maker, Studio, or Agency).
  */
+function getIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+}
+
 export async function authenticateAndCheckCRM(req: NextRequest): Promise<AuthResult> {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
+    logSecurityEvent('unauthorized_access', null, getIp(req), { path: req.nextUrl.pathname, reason: 'no_token' });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -46,6 +52,7 @@ export async function authenticateAndCheckCRM(req: NextRequest): Promise<AuthRes
     return { userId: decoded.userId, plan };
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
+      logSecurityEvent('unauthorized_access', null, getIp(req), { path: req.nextUrl.pathname, reason: 'invalid_token' });
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
     console.error('Auth helper error:', error);

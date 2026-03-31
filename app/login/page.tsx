@@ -56,15 +56,20 @@ export default function LoginPage() {
 
       // Save JWT token and user data
       localStorage.setItem('cf_token', data.token);
-      localStorage.setItem('cf_email', data.user.email);
-      localStorage.setItem('cf_name', data.user.name);
-      if (data.user.plan) localStorage.setItem('cf_plan', data.user.plan);
+      const user = data.user;
+      if (user) {
+        localStorage.setItem('cf_email', user.email || '');
+        localStorage.setItem('cf_name', user.name || '');
+        if (user.plan) localStorage.setItem('cf_plan', user.plan);
 
-      // Admin bypass — always go to dashboard
-      if (isAdminEmail(data.user.email)) {
-        router.push('/dashboard');
-      } else if (data.user.subscriptionStatus !== 'active') {
-        router.push('/subscription-inactive');
+        // Admin bypass — always go to dashboard
+        if (isAdminEmail(user.email || '')) {
+          router.push('/dashboard');
+        } else if (user.subscriptionStatus !== 'active') {
+          router.push('/subscription-inactive');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         router.push('/dashboard');
       }

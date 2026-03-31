@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import { signToken } from '@/lib/jwt';
+import { logSecurityEvent } from '@/lib/audit-log';
 
 // Per-email brute force protection
 const loginAttemptsMap = new Map<string, { count: number; firstAttempt: number }>();
@@ -20,8 +21,13 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getIp(req: NextRequest): string {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const ip = getIp(req);
     const { email, password } = await req.json();
 
     if (!email || !password) {
@@ -36,6 +42,7 @@ export async function POST(req: NextRequest) {
       if (elapsed > LOGIN_LOCKOUT_WINDOW) {
         loginAttemptsMap.delete(emailKey);
       } else if (attempts.count >= LOGIN_MAX_ATTEMPTS) {
+        logSecurityEvent('login_blocked', null, ip, { email: emailKey });
         return NextResponse.json(
           { error: 'Conta temporariamente bloqueada. Tente novamente em 15 minutos.' },
           { status: 429 }
@@ -55,9 +62,9 @@ export async function POST(req: NextRequest) {
     );
 
     if (result.rows.length === 0) {
-      // Track failed attempt + artificial delay
       const entry = loginAttemptsMap.get(emailKey);
       if (entry) { entry.count++; } else { loginAttemptsMap.set(emailKey, { count: 1, firstAttempt: Date.now() }); }
+      logSecurityEvent('login_failed', null, ip, { email: emailKey, reason: 'user_not_found' });
       await delay(500);
       return NextResponse.json({ error: 'Email ou senha incorretos' }, { status: 401 });
     }
@@ -66,15 +73,16 @@ export async function POST(req: NextRequest) {
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      // Track failed attempt + artificial delay
       const entry = loginAttemptsMap.get(emailKey);
       if (entry) { entry.count++; } else { loginAttemptsMap.set(emailKey, { count: 1, firstAttempt: Date.now() }); }
+      logSecurityEvent('login_failed', user.id, ip, { email: emailKey, reason: 'wrong_password' });
       await delay(500);
       return NextResponse.json({ error: 'Email ou senha incorretos' }, { status: 401 });
     }
 
     // Successful login — reset failed attempts counter
     loginAttemptsMap.delete(emailKey);
+    logSecurityEvent('login_success', user.id, ip, { email: emailKey });
 
     await query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 

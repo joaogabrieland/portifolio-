@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     // Increment usage after successful response
     if (userId) {
       incrementUsage(userId, feature).catch(err => {
-        console.error('Failed to increment usage for user', userId, 'feature', feature, ':', err);
+        console.error('Failed to increment usage:', err);
       });
     }
 

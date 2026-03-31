@@ -80,8 +80,6 @@ export async function PUT(
     }
 
     const serialized = JSON.stringify(data);
-    const preview = serialized.length > 300 ? serialized.slice(0, 300) + '…' : serialized;
-    console.log(`[AUDITORIA PUT] ${clientId}/${dataType} — payload length: ${serialized.length}, preview: ${preview}`);
 
     await query(
       `INSERT INTO client_data (client_id, user_id, data_type, data)
