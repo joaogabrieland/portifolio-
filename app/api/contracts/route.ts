@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
 import { GoogleGenAI } from '@google/genai';
 
+/** Strip HTML tags and known prompt injection patterns from input */
+function sanitizeInput(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, '')                        // strip HTML tags
+    .replace(/ignore\s+(previous|above|all)/gi, '') // "ignore previous instructions"
+    .replace(/system\s*:/gi, '')                     // "system:" prefix
+    .replace(/assistant\s*:/gi, '')                  // "assistant:" prefix
+    .replace(/#{3,}/g, '')                           // "###" separators
+    .replace(/```/g, '')                             // code fences
+    .trim();
+}
+
+const MAX_CLIENT_NAME = 100;
+const MAX_PROJECT_SCOPE = 2000;
+const MAX_FIELD = 500;
+
 export async function POST(req: NextRequest) {
   const auth = await authenticateAndCheckCRM(req);
   if (!isAuthenticated(auth)) return auth;
@@ -9,8 +25,32 @@ export async function POST(req: NextRequest) {
   try {
     const { clientName, projectScope, value, deadline, paymentTerms } = await req.json();
     if (!clientName || !projectScope) {
-      return NextResponse.json({ error: 'clientName and projectScope are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Nome do cliente e escopo do projeto são obrigatórios' }, { status: 400 });
     }
+
+    // Validate lengths
+    if (clientName.length > MAX_CLIENT_NAME) {
+      return NextResponse.json({ error: `Nome do cliente deve ter no máximo ${MAX_CLIENT_NAME} caracteres` }, { status: 400 });
+    }
+    if (projectScope.length > MAX_PROJECT_SCOPE) {
+      return NextResponse.json({ error: `Escopo do projeto deve ter no máximo ${MAX_PROJECT_SCOPE} caracteres` }, { status: 400 });
+    }
+    if (value && value.length > MAX_FIELD) {
+      return NextResponse.json({ error: `Valor deve ter no máximo ${MAX_FIELD} caracteres` }, { status: 400 });
+    }
+    if (deadline && deadline.length > MAX_FIELD) {
+      return NextResponse.json({ error: `Prazo deve ter no máximo ${MAX_FIELD} caracteres` }, { status: 400 });
+    }
+    if (paymentTerms && paymentTerms.length > MAX_FIELD) {
+      return NextResponse.json({ error: `Condições de pagamento deve ter no máximo ${MAX_FIELD} caracteres` }, { status: 400 });
+    }
+
+    // Sanitize all inputs
+    const safeClientName = sanitizeInput(clientName);
+    const safeProjectScope = sanitizeInput(projectScope);
+    const safeValue = value ? sanitizeInput(value) : 'A definir';
+    const safeDeadline = deadline ? sanitizeInput(deadline) : 'A definir';
+    const safePaymentTerms = paymentTerms ? sanitizeInput(paymentTerms) : '50% na assinatura, 50% na entrega';
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -20,11 +60,11 @@ export async function POST(req: NextRequest) {
     const prompt = `Você é um advogado especializado em contratos de prestação de serviços audiovisuais no Brasil. Gere um contrato profissional completo em PT-BR.
 
 Dados do contrato:
-- CONTRATANTE: ${clientName}
-- ESCOPO DO PROJETO: ${projectScope}
-- VALOR: ${value || 'A definir'}
-- PRAZO DE ENTREGA: ${deadline || 'A definir'}
-- CONDIÇÕES DE PAGAMENTO: ${paymentTerms || '50% na assinatura, 50% na entrega'}
+- CONTRATANTE: ${safeClientName}
+- ESCOPO DO PROJETO: ${safeProjectScope}
+- VALOR: ${safeValue}
+- PRAZO DE ENTREGA: ${safeDeadline}
+- CONDIÇÕES DE PAGAMENTO: ${safePaymentTerms}
 
 O contrato deve incluir:
 1. IDENTIFICAÇÃO DAS PARTES (deixar campos [___] para dados como CPF/CNPJ, endereço)

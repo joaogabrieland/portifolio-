@@ -18,9 +18,13 @@ async function validateToken(inviteToken: string, clientId: string) {
   const result = await query(
     `SELECT ti.user_id FROM team_invites ti
      JOIN clients c ON c.user_id::text = ti.user_id::text
-     WHERE ti.token = $1 AND c.id::text = $2 LIMIT 1`,
+     WHERE ti.token = $1 AND ti.expires_at > NOW() AND c.id::text = $2 LIMIT 1`,
     [inviteToken, clientId]
   );
+  if (result.rows.length > 0) {
+    // Update last access timestamp
+    await query('UPDATE team_invites SET last_accessed_at = NOW() WHERE token = $1', [inviteToken]);
+  }
   return result.rows.length > 0;
 }
 

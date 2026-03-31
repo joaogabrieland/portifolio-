@@ -11,18 +11,21 @@ export async function GET(
   const { inviteToken, clientId } = await params;
 
   try {
-    // Validate token → get producer
+    // Validate token → get producer (check expiration)
     const inviteResult = await query(
       `SELECT ti.user_id, u.name as producer_name
        FROM team_invites ti
        JOIN users u ON u.id::text = ti.user_id::text
-       WHERE ti.token = $1 LIMIT 1`,
+       WHERE ti.token = $1 AND ti.expires_at > NOW() LIMIT 1`,
       [inviteToken]
     );
     if (inviteResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+      return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
     }
     const { user_id: userId, producer_name: producerName } = inviteResult.rows[0];
+
+    // Update last access timestamp
+    await query('UPDATE team_invites SET last_accessed_at = NOW() WHERE token = $1', [inviteToken]);
 
     // Get client info
     const clientResult = await query(

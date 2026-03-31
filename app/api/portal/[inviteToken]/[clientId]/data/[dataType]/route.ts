@@ -22,15 +22,18 @@ export async function GET(
   }
 
   try {
-    // 1. Validate inviteToken → resolve producer user_id
+    // 1. Validate inviteToken → resolve producer user_id (check expiration)
     const inviteResult = await query(
-      'SELECT user_id FROM team_invites WHERE token = $1 LIMIT 1',
+      'SELECT user_id FROM team_invites WHERE token = $1 AND expires_at > NOW() LIMIT 1',
       [inviteToken]
     );
     if (inviteResult.rows.length === 0) {
       return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
     }
     const userId = inviteResult.rows[0].user_id;
+
+    // Update last access timestamp
+    await query('UPDATE team_invites SET last_accessed_at = NOW() WHERE token = $1', [inviteToken]);
 
     // 2. Verify clientId belongs to this producer
     const clientCheck = await query(

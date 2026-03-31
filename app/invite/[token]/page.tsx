@@ -45,20 +45,18 @@ export default function InvitePage() {
       setFormError('Digite seu nome.');
       return;
     }
-    if (password.length < 6) {
-      setFormError('A senha deve ter pelo menos 6 caracteres.');
+    if (password.length < 8) {
+      setFormError('A senha deve ter pelo menos 8 caracteres.');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const res = await fetch(`/api/team/invite/accept`, {
+      const res = await fetch(`/api/invite/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token,
-          email: inviteEmail.trim(),
           name: name.trim(),
           password,
         }),
@@ -171,7 +169,7 @@ export default function InvitePage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres"
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-zinc-600"
               />
               <button

@@ -3,6 +3,30 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
+// Rate limit for public GET endpoint: 30 requests per minute per IP
+const messageRateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const MSG_RATE_LIMIT_WINDOW = 60 * 1000;
+const MSG_RATE_LIMIT_MAX = 30;
+
+function checkMessageRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = messageRateLimitMap.get(ip);
+  if (!entry || now > entry.resetTime) {
+    messageRateLimitMap.set(ip, { count: 1, resetTime: now + MSG_RATE_LIMIT_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= MSG_RATE_LIMIT_MAX;
+}
+
+// Clean up stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of messageRateLimitMap) {
+    if (now > value.resetTime) messageRateLimitMap.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 // Ensure table exists (runs once per cold start effectively)
 async function ensureTable() {
   await query(`
@@ -21,16 +45,22 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    // Rate limit check
+    const ip = _req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || _req.headers.get('x-real-ip') || 'unknown';
+    if (!checkMessageRateLimit(ip)) {
+      return NextResponse.json({ error: 'Muitas requisições. Tente novamente em 1 minuto.' }, { status: 429 });
+    }
+
     const { token } = await params;
     await ensureTable();
 
-    // Validate token exists
+    // Validate token exists and is not expired
     const invite = await query(
-      'SELECT id FROM team_invites WHERE token = $1 LIMIT 1',
+      'SELECT id FROM team_invites WHERE token = $1 AND expires_at > NOW() LIMIT 1',
       [token]
     );
     if (invite.rows.length === 0) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 404 });
+      return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 404 });
     }
 
     const result = await query(
