@@ -15,9 +15,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ data
     );
     return NextResponse.json({ data: result.rows[0]?.data ?? null });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] GET /api/user-data/${dataType} FALHOU:`, detail, error);
-    return NextResponse.json({ error: `Erro ao carregar ${dataType}: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] GET /api/user-data/${dataType} FALHOU:`, error);
+    return NextResponse.json({ error: `Erro ao carregar ${dataType}` }, { status: 500 });
   }
 }
 
@@ -45,8 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ data
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] PUT /api/user-data/${dataType} FALHOU — dado NÃO SALVO:`, detail, error);
-    return NextResponse.json({ error: `Erro ao salvar ${dataType}: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] PUT /api/user-data/${dataType} FALHOU — dado NÃO SALVO:`, error);
+    return NextResponse.json({ error: `Erro ao salvar ${dataType}` }, { status: 500 });
   }
 }

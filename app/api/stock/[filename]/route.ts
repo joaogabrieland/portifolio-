@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
+import { verifyToken } from '@/lib/jwt';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 const UPLOAD_DIR = process.env.STOCK_UPLOAD_DIR || '/data/stock';
 
@@ -15,6 +17,12 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
+    const authHeader = _req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    verifyToken(authHeader.split(' ')[1]);
+
     const { filename } = await params;
     if (!/^[a-f0-9-]+\.\w+$/.test(filename)) {
       return NextResponse.json({ error: 'Arquivo inválido' }, { status: 400 });
@@ -36,6 +44,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
     console.error('Stock serve error:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }

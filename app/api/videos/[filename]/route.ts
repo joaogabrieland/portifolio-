@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
+import { verifyToken } from '@/lib/jwt';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 const UPLOAD_DIR = process.env.VIDEO_UPLOAD_DIR || '/data/videos';
 
@@ -17,6 +19,12 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
+    const authHeader = _req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    verifyToken(authHeader.split(' ')[1]);
+
     const { filename } = await params;
 
     // Sanitize: only allow uuid-style filenames with extension
@@ -46,6 +54,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
     console.error('Video serve error:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }

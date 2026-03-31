@@ -33,9 +33,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ clients });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error('ERRO AO LISTAR CLIENTES:', detail, error);
-    return NextResponse.json({ error: `Erro ao listar clientes: ${detail}` }, { status: 500 });
+    console.error('ERRO AO LISTAR CLIENTES:', error);
+    return NextResponse.json({ error: 'Erro ao listar clientes' }, { status: 500 });
   }
 }
 
@@ -93,10 +92,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ client }, { status: 201 });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error('ERRO AO CRIAR CLIENTE:', detail, error);
+    console.error('ERRO AO CRIAR CLIENTE:', error);
     return NextResponse.json(
-      { error: `Erro ao salvar cliente: ${detail}` },
+      { error: 'Erro ao salvar cliente' },
       { status: 500 }
     );
   }

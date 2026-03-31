@@ -51,14 +51,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ⚠️ UI TEST BYPASS — bypass_member tokens are fake and can't be validated by the API.
-    // Allow them to access the dashboard directly so RBAC UI can be tested.
-    // Remove this block when real backend auth is connected.
-    if (token.startsWith('bypass_member_')) {
-      setChecked(true);
-      return;
-    }
-
     // Fetch user data — do NOT redirect until this resolves
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` },

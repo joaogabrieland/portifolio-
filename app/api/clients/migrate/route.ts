@@ -86,4 +86,5 @@ export async function POST(req: NextRequest) {
     console.error('POST /api/clients/migrate error:', error);
     return NextResponse.json({ error: 'Erro ao migrar dados' }, { status: 500 });
   }
+
 }

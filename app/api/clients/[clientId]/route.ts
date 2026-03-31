@@ -66,9 +66,8 @@ export async function PUT(
 
     return NextResponse.json({ client });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] PUT /api/clients/${clientId} FALHOU:`, detail, error);
-    return NextResponse.json({ error: `Erro ao atualizar cliente: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] PUT /api/clients/${clientId} FALHOU:`, error);
+    return NextResponse.json({ error: 'Erro ao atualizar cliente' }, { status: 500 });
   }
 }
 
@@ -94,8 +93,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] DELETE /api/clients/${clientId} FALHOU:`, detail, error);
-    return NextResponse.json({ error: `Erro ao excluir cliente: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] DELETE /api/clients/${clientId} FALHOU:`, error);
+    return NextResponse.json({ error: 'Erro ao excluir cliente' }, { status: 500 });
   }
 }

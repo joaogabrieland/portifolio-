@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/jwt';
-import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
 import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: NextRequest) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    verifyToken(authHeader.split(' ')[1]);
+  const auth = await authenticateAndCheckCRM(req);
+  if (!isAuthenticated(auth)) return auth;
 
+  try {
     const { clientName, projectScope, value, deadline, paymentTerms } = await req.json();
     if (!clientName || !projectScope) {
       return NextResponse.json({ error: 'clientName and projectScope are required' }, { status: 400 });
@@ -59,7 +55,7 @@ Responda APENAS com o texto do contrato, sem explicações adicionais.`;
       });
     } catch (geminiErr) {
       console.error('Contract Gemini SDK error:', geminiErr);
-      return NextResponse.json({ error: 'AI service error', details: String(geminiErr) }, { status: 502 });
+      return NextResponse.json({ error: 'Erro no serviço de IA' }, { status: 502 });
     }
 
     const text = response.text || '';
@@ -70,10 +66,7 @@ Responda APENAS com o texto do contrato, sem explicações adicionais.`;
 
     return NextResponse.json({ contract: text });
   } catch (error) {
-    if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
     console.error('Contract API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

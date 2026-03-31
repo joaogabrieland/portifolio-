@@ -266,13 +266,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
 
     const storedToken = localStorage.getItem('cf_token');
 
-    // ⚠️ UI TEST BYPASS — bypass_member tokens can't call the real API (invalid JWT).
-    // Generate a mock invite URL directly in the browser for local UI testing.
-    // Remove this early-return block when the real backend is connected.
-    if (!storedToken || storedToken.startsWith('bypass_member_')) {
-      const mockToken = crypto.randomUUID();
-      setInviteUrl(`${window.location.origin}/invite/${mockToken}`);
-      setShowInviteLink(true);
+    if (!storedToken) {
       setInviteLoading(false);
       return;
     }
