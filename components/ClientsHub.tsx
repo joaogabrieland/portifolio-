@@ -249,10 +249,22 @@ const UpcomingScheduleSection: React.FC<UpcomingScheduleSectionProps> = ({ clien
 // ─────────────────────────────────────────────
 interface TeamModalProps { isOpen: boolean; onClose: () => void; }
 
-const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
-  // ── Global agency state (real members list) ──────────────────────────────
-  const { teamMembers: agencyMembers, removeMember, updateMemberRole } = useAgency();
+interface ApiTeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  cargo: string;
+  isOwner: boolean;
+  avatar?: string;
+  joinedAt: number;
+}
 
+const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
+  const { updateMemberRole } = useAgency();
+
+  const [members, setMembers]               = useState<ApiTeamMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [inviteUrl, setInviteUrl]           = useState('');
   const [inviteLoading, setInviteLoading]   = useState(false);
   const [showInviteLink, setShowInviteLink] = useState(false);
@@ -260,6 +272,26 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
   const [inviteToast, setInviteToast]       = useState(false);
   const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
   const [editingId, setEditingId]           = useState<string | null>(null);
+
+  // Fetch members from API when modal opens
+  const membersFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen || membersFetchedRef.current) return;
+    membersFetchedRef.current = true;
+    setMembersLoading(true);
+    const token = localStorage.getItem('cf_token');
+    if (!token) { setMembersLoading(false); return; }
+    fetch('/api/team/members', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.members) setMembers(data.members); })
+      .catch(() => {})
+      .finally(() => setMembersLoading(false));
+  }, [isOpen]);
+
+  // Reset fetch guard when modal closes so it re-fetches on next open
+  useEffect(() => {
+    if (!isOpen) membersFetchedRef.current = false;
+  }, [isOpen]);
 
   const handleGenerateInvite = async () => {
     setInviteLoading(true);
@@ -298,14 +330,45 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
     setTimeout(() => setInviteToast(false), 3000);
   };
 
-  const handleRemove = (id: string) => {
-    if (confirm('Remover este membro da equipe?')) removeMember(id);
+  const handleRemove = async (id: string) => {
+    if (!confirm('Remover este membro da equipe?')) { setOpenMenuId(null); return; }
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/team/members/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setMembers(prev => prev.filter(m => m.id !== id));
+    } catch { /* ignore */ }
     setOpenMenuId(null);
   };
 
-  const handleChangeRole = (id: string, role: MemberRole) => {
-    updateMemberRole(id, role);
+  const handleChangeRole = async (id: string, role: MemberRole) => {
+    // Map MemberRole to cargo label
+    const cargoMap: Record<MemberRole, string> = {
+      admin: 'Administrador',
+      roteirista: 'Roteirista',
+      videomaker: 'Videomaker',
+      editor: 'Editor',
+      designer: 'Designer',
+    };
+    const cargo = cargoMap[role] || role;
+
+    // Optimistic update
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, cargo } : m));
+    updateMemberRole(id, role); // keep localStorage in sync
     setEditingId(null);
+
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    try {
+      await fetch(`/api/team/members/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cargo }),
+      });
+    } catch { /* ignore — optimistic update already applied */ }
   };
 
   const getInitials = (name: string) =>
@@ -393,16 +456,26 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Member list — sourced from global AgencyContext */}
+          {/* Member list — sourced from API */}
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3">
-              Membros Ativos · {agencyMembers.length}
+              Membros Ativos · {members.length}
             </p>
 
+            {membersLoading && (
+              <div className="flex justify-center py-8">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+              </div>
+            )}
+
             <div className="space-y-2">
-              {agencyMembers.map(member => {
-                // Resolve the functional role badge (memberRole is 'roteirista' etc.; role is 'admin'|'user')
-                const badgeKey = (member.memberRole as MemberRole) || (member.isOwner ? 'admin' : 'editor');
+              {members.map(member => {
+                // Resolve cargo to MemberRole key for badge styling
+                const cargoToRole: Record<string, MemberRole> = {
+                  'Administrador': 'admin', 'Roteirista': 'roteirista',
+                  'Videomaker': 'videomaker', 'Editor': 'editor', 'Designer': 'designer',
+                };
+                const badgeKey = cargoToRole[member.cargo] || (member.isOwner ? 'admin' : 'editor');
                 const cfg = ROLE_CONFIG[badgeKey] ?? ROLE_CONFIG['editor'];
                 return (
                   <div
@@ -480,7 +553,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
                                   key={opt.value}
                                   onClick={() => handleChangeRole(member.id, opt.value)}
                                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all text-left ${
-                                    member.memberRole === opt.value
+                                    cargoToRole[member.cargo] === opt.value
                                       ? 'bg-violet-900/20 text-violet-400'
                                       : 'hover:bg-zinc-700/50 text-zinc-300'
                                   }`}
