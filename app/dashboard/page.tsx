@@ -19,7 +19,7 @@ import TutorialModal, { TutorialButton } from '@/components/TutorialModal';
 import { isAdminEmail } from '@/lib/admin-emails';
 import StudioProfileModal from '@/components/StudioProfileModal';
 import AuthGuard from '@/components/auth/AuthGuard';
-import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield, FilePen } from 'lucide-react';
+import { LayoutGrid, Sparkles, ChevronRight, ChevronDown, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield, FilePen, ExternalLink } from 'lucide-react';
 
 const STORAGE_KEY = 'creator_flow_history_v2';
 const PROFILES_KEY = 'creator_flow_ig_profiles';
@@ -212,6 +212,21 @@ export default function DashboardPage() {
   // Tutorial Modal State
   const [isDashboardTutorialOpen, setIsDashboardTutorialOpen] = useState(false);
   const [isCriacaoTutorialOpen,   setIsCriacaoTutorialOpen]   = useState(false);
+
+  // User dropdown menu
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isUserMenuOpen]);
 
   // Payment success toast
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
@@ -1038,7 +1053,7 @@ export default function DashboardPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
             </a>
-            {/* Right: admin + meu estúdio + avatar/name + sair */}
+            {/* Right: admin + meu estúdio + avatar dropdown */}
             <div className="flex items-center gap-3">
               {userEmail && isAdminEmail(userEmail) && (
                 <button
@@ -1056,30 +1071,109 @@ export default function DashboardPage() {
                 <Clapperboard className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Meu Estúdio</span>
               </button>
-              <div className="flex items-center gap-2">
-                {currentUser?.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentUser.avatar}
-                    alt="Avatar"
-                    className="w-8 h-8 rounded-full object-cover border border-gray-600 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[10px] font-bold text-gray-200 select-none">
-                      {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
-                    </span>
+              {/* User avatar dropdown */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setIsUserMenuOpen(prev => !prev)}
+                  className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                >
+                  {currentUser?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentUser.avatar}
+                      alt="Avatar"
+                      className="w-8 h-8 rounded-full object-cover border border-gray-600 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-bold text-gray-200 select-none">
+                        {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 min-w-[260px] bg-zinc-900 border border-white/10 rounded-xl shadow-xl py-2 z-50">
+                    {/* User info header */}
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      {currentUser?.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-gray-600 flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-gray-200 select-none">
+                            {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{userName || 'Criador'}</p>
+                        <p className="text-xs text-gray-400 truncate">{userEmail}</p>
+                        {userPlan && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase tracking-wider text-violet-300 bg-violet-500/15 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+                            <Zap className="w-2.5 h-2.5" />
+                            {userPlan}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Menu items */}
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); router.push('/dashboard/profile'); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"
+                    >
+                      <User className="w-4 h-4 text-gray-400" />
+                      Meu Perfil
+                    </button>
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); setIsReferralModalOpen(true); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"
+                    >
+                      <Gift className="w-4 h-4 text-gray-400" />
+                      Indique e Ganhe
+                    </button>
+                    <a
+                      href="https://youtube.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                      Assistir Tutorial
+                    </a>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Plan info */}
+                    <div className="px-4 py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-widest text-gray-500 mb-1.5">Seu plano atual</p>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-sm font-bold text-white">
+                          <Zap className="w-3.5 h-3.5 text-violet-400" />
+                          {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : 'Free'}
+                        </span>
+                        <button
+                          onClick={() => { setIsUserMenuOpen(false); router.push('/dashboard/pricing'); }}
+                          className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                        >
+                          Fazer upgrade →
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Logout */}
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); agencySignOut(); router.push('/login'); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-900/10 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </button>
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
               </div>
-              <button
-                onClick={() => { agencySignOut(); router.push('/login'); }}
-                className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-900/10 transition-all"
-                title="Sair"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           </header>
 
