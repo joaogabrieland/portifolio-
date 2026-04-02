@@ -104,9 +104,9 @@ export async function POST(
     const passwordHash = await bcrypt.hash(password, 12);
 
     const userResult = await query(
-      `INSERT INTO users (name, email, password_hash, role)
-       VALUES ($1, $2, $3, 'member') RETURNING id`,
-      [name.trim(), memberEmail, passwordHash]
+      `INSERT INTO users (name, email, password_hash, role, owner_id)
+       VALUES ($1, $2, $3, 'member', $4) RETURNING id`,
+      [name.trim(), memberEmail, passwordHash, invite.user_id]
     );
 
     const userId = userResult.rows[0].id;

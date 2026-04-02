@@ -66,6 +66,21 @@ export function isAuthenticated(result: AuthResult): result is { userId: string;
 }
 
 /**
+ * Resolve the effective data-owner ID.
+ * Owners get their own ID back; members get their owner_id (the account that invited them).
+ */
+export async function resolveOwnerId(userId: string): Promise<string> {
+  const r = await query(
+    'SELECT role, owner_id FROM users WHERE id = $1 LIMIT 1',
+    [userId]
+  );
+  if (r.rows.length > 0 && r.rows[0].role === 'member' && r.rows[0].owner_id) {
+    return r.rows[0].owner_id;
+  }
+  return userId;
+}
+
+/**
  * Simple auth: extracts userId from Bearer token without CRM plan check.
  * Useful for generic user data endpoints.
  */

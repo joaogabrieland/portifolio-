@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
+import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/auth-helpers';
 
 // PUT /api/clients/:clientId — Update client profile
 export async function PUT(
@@ -13,6 +13,7 @@ export async function PUT(
   const { clientId } = await params;
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
     const body = await req.json();
     const { brandName, niche, subniche, idealClient, mainPains, mainDesires, voiceTone, visualStyle, defaultCta } = body;
 
@@ -32,7 +33,7 @@ export async function PUT(
        RETURNING id, brand_name, niche, subniche, ideal_client, main_pains, main_desires, voice_tone, visual_style, default_cta, created_at`,
       [
         clientId,
-        auth.userId,
+        effectiveUserId,
         brandName ?? null,
         niche ?? null,
         subniche ?? null,
@@ -82,9 +83,10 @@ export async function DELETE(
   const { clientId } = await params;
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
     const result = await query(
       'DELETE FROM clients WHERE id = $1 AND user_id = $2',
-      [clientId, auth.userId]
+      [clientId, effectiveUserId]
     );
 
     if (result.rowCount === 0) {

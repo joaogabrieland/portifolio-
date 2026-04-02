@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
+import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/auth-helpers';
 
-// GET /api/clients — List all clients for the authenticated user
+// GET /api/clients — List all clients for the authenticated user (or their owner)
 export async function GET(req: NextRequest) {
   const auth = await authenticateAndCheckCRM(req);
   if (!isAuthenticated(auth)) return auth;
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
+
     const result = await query(
       `SELECT id, brand_name, niche, subniche, ideal_client, main_pains, main_desires,
               voice_tone, visual_style, default_cta, created_at
        FROM clients
        WHERE user_id = $1
        ORDER BY created_at DESC`,
-      [auth.userId]
+      [effectiveUserId]
     );
 
     const clients = result.rows.map(row => ({
@@ -57,12 +59,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
     const result = await query(
       `INSERT INTO clients (user_id, brand_name, niche, subniche, ideal_client, main_pains, main_desires, voice_tone, visual_style, default_cta)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id, brand_name, niche, subniche, ideal_client, main_pains, main_desires, voice_tone, visual_style, default_cta, created_at`,
       [
-        auth.userId,
+        effectiveUserId,
         brandName.trim(),
         niche || '',
         subniche || '',

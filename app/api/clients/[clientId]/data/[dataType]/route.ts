@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
+import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/auth-helpers';
 
 const VALID_DATA_TYPES = new Set([
   'kanban', 'archive', 'agenda', 'roteiros', 'storyboard_usage',
@@ -24,10 +24,12 @@ export async function GET(
   }
 
   try {
-    // Verify client ownership
+    const effectiveUserId = await resolveOwnerId(auth.userId);
+
+    // Verify client ownership (members access their owner's clients)
     const clientCheck = await query(
       'SELECT id FROM clients WHERE id = $1 AND user_id = $2',
-      [clientId, auth.userId]
+      [clientId, effectiveUserId]
     );
     if (clientCheck.rows.length === 0) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
@@ -62,10 +64,12 @@ export async function PUT(
   }
 
   try {
-    // Verify client ownership
+    const effectiveUserId = await resolveOwnerId(auth.userId);
+
+    // Verify client ownership (members access their owner's clients)
     const clientCheck = await query(
       'SELECT id FROM clients WHERE id = $1 AND user_id = $2',
-      [clientId, auth.userId]
+      [clientId, effectiveUserId]
     );
     if (clientCheck.rows.length === 0) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
@@ -86,7 +90,7 @@ export async function PUT(
        VALUES ($1, $2, $3, $4::jsonb)
        ON CONFLICT (client_id, data_type)
        DO UPDATE SET data = $4::jsonb, updated_at = NOW()`,
-      [clientId, auth.userId, dataType, serialized]
+      [clientId, effectiveUserId, dataType, serialized]
     );
 
     return NextResponse.json({ success: true });
