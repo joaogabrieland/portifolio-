@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id,
+      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id, u.role,
               s.plan, s.status as subscription_status, s.current_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         name: user.name,
         plan: user.plan || null,
+        role: user.role || 'owner',
         subscriptionStatus: user.subscription_status || 'inactive',
       },
       '7d'
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
         name: user.name,
         email: user.email,
         plan: user.plan || null,
+        role: user.role || 'owner',
         subscriptionStatus: user.subscription_status || 'inactive',
         currentPeriodEnd: user.current_period_end,
       },

@@ -11,9 +11,9 @@ function getJwtSecret(): string {
   return secret;
 }
 
-export function verifyToken(token: string): { userId: string; email?: string; name?: string; plan?: string } {
+export function verifyToken(token: string): { userId: string; email?: string; name?: string; plan?: string; role?: string } {
   const secret = getJwtSecret();
-  const decoded = jwt.verify(token, secret) as { userId: string; email?: string; name?: string; plan?: string };
+  const decoded = jwt.verify(token, secret) as { userId: string; email?: string; name?: string; plan?: string; role?: string };
   if (!decoded.userId) {
     throw new JsonWebTokenError('Invalid token: missing userId');
   }

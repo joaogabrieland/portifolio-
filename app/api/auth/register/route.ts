@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     });
 
     const userResult = await query(
-      `INSERT INTO users (name, email, password_hash, stripe_customer_id)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
+      `INSERT INTO users (name, email, password_hash, stripe_customer_id, role)
+       VALUES ($1, $2, $3, $4, 'owner') RETURNING id`,
       [name, email.toLowerCase(), passwordHash, customer.id]
     );
     const userId = userResult.rows[0].id;

@@ -76,7 +76,7 @@ export default function InvitePage() {
       localStorage.setItem('cf_email', data.user?.email || inviteEmail.trim());
       localStorage.setItem('cf_name', data.user?.name || name.trim());
       localStorage.setItem('cf_plan', data.user?.plan || '');
-      localStorage.setItem('cf_role', 'user');
+      localStorage.setItem('cf_role', 'member');
 
       router.push('/dashboard');
     } catch {

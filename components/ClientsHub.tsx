@@ -908,7 +908,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [portalClient, setPortalClient]     = useState<Client | null>(null);
-  const [hubView, setHubView]               = useState<'bi' | 'clientes'>('bi');
+  const [hubView, setHubView]               = useState<'bi' | 'clientes'>(isAdmin ? 'bi' : 'clientes');
   const [alertsCache, setAlertsCache]       = useState<Record<string, ClientAlerts>>({});
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [portalToken, setPortalToken]       = useState('');
@@ -1063,16 +1063,18 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
         <div className="border-b border-zinc-800 bg-zinc-950 px-4 sm:px-6 py-3">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 w-fit">
-              <button
-                onClick={() => setHubView('bi')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                  hubView === 'bi'
-                    ? 'bg-zinc-700 text-white shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" /> Business Intelligence
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setHubView('bi')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    hubView === 'bi'
+                      ? 'bg-zinc-700 text-white shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" /> Business Intelligence
+                </button>
+              )}
               <button
                 onClick={() => setHubView('clientes')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
@@ -1087,8 +1089,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           </div>
         </div>
 
-        {/* ── BI Dashboard ── */}
-        {hubView === 'bi' && <BIDashboard clients={clients} />}
+        {/* ── BI Dashboard (owner only) ── */}
+        {isAdmin && hubView === 'bi' && <BIDashboard clients={clients} />}
 
         {/* ── Clients view ── */}
         {hubView === 'clientes' && (

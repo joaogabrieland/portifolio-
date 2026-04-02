@@ -75,8 +75,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('cf_email', email);
         localStorage.setItem('cf_name', data.user.name || '');
         localStorage.setItem('cf_plan', data.user.plan || '');
-        // Always write cf_role so stale values from invite-bypass tests are overwritten
-        localStorage.setItem('cf_role', isAdminEmail(email) ? 'admin' : 'user');
+        // Role from server (owner/member) — admin emails always get 'owner'
+        const serverRole = isAdminEmail(email) ? 'owner' : (data.user.role || 'owner');
+        localStorage.setItem('cf_role', serverRole);
 
         // Admin bypass — NEVER check subscription for admin emails
         if (isAdminEmail(email)) {

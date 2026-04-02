@@ -61,6 +61,7 @@ export default function LoginPage() {
         localStorage.setItem('cf_email', user.email || '');
         localStorage.setItem('cf_name', user.name || '');
         if (user.plan) localStorage.setItem('cf_plan', user.plan);
+        localStorage.setItem('cf_role', user.role || 'owner');
 
         // Admin bypass — always go to dashboard
         if (isAdminEmail(user.email || '')) {

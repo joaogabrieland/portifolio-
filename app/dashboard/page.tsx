@@ -282,11 +282,12 @@ export default function DashboardPage() {
   const [userPlan, setUserPlan] = useState('');
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userRole, setUserRole] = useState<'owner' | 'member'>('owner');
 
-  // RBAC — sourced from AgencyContext (global, persisted).
-  // Default: admin (true) — so the owner never loses access before hydration.
+  // RBAC — role from /api/auth/me (server-verified, stored by AuthGuard).
+  // Default: owner — so the account owner never loses access before hydration.
   const { currentUser, signOut: agencySignOut } = useAgency();
-  const isAdmin = currentUser ? currentUser.role !== 'user' : true;
+  const isOwner = userRole === 'owner';
 
   const dashboardInitRef = useRef(false);
   useEffect(() => {
@@ -296,6 +297,8 @@ export default function DashboardPage() {
     setUserPlan(plan);
     setUserName(localStorage.getItem('cf_name') || '');
     setUserEmail(localStorage.getItem('cf_email') || '');
+    const role = localStorage.getItem('cf_role');
+    setUserRole(role === 'member' ? 'member' : 'owner');
     const token = localStorage.getItem('cf_token');
     if (token) {
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
@@ -993,7 +996,7 @@ export default function DashboardPage() {
           onNavigateToArquivos={() => { setIsClientesHubOpen(false); setIsArquivosHubOpen(true); }}
           onOpenBudgetSheet={() => { setIsClientesHubOpen(false); setActiveAgentId(AgentId.BUDGET_SHEET); }}
           onLinkCopied={() => { setShowLinkCopied(true); setTimeout(() => setShowLinkCopied(false), 2500); }}
-          isAdmin={isAdmin}
+          isAdmin={isOwner}
         />
      ) : isArquivosHubOpen ? (
         <HubArquivos
@@ -1317,7 +1320,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Gestão & CRM */}
+            {/* Gestão & CRM — owner only for financial tools */}
             <div className="w-full mb-12">
               <h2 className="text-xs font-bold tracking-wider text-gray-500 mb-4 uppercase">Gestão & CRM</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1333,6 +1336,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Gerencie HDs e registre ingests como Backup.</p>
                   </div>
                 </button>
+                {isOwner && (
                 <button
                   onClick={() => router.push('/dashboard/pricing')}
                   className="group bg-[#0a0a0a] border border-white/5 hover:border-violet-900/50 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300"
@@ -1345,6 +1349,8 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Calcule orçamentos e defina sua margem de lucro em poucos passos.</p>
                   </div>
                 </button>
+                )}
+                {isOwner && (
                 <div className="relative bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 flex items-start gap-4 opacity-60 pointer-events-none">
                   <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
                     <DollarSign className="w-5 h-5 text-gray-400" />
@@ -1357,6 +1363,8 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Controle de receitas, despesas e precificação.</p>
                   </div>
                 </div>
+                )}
+                {isOwner && (
                 <Link
                   href="/dashboard/gerador-contratos"
                   className="group bg-[#0a0a0a] border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300 hover:bg-purple-500/5"
@@ -1372,6 +1380,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Crie contratos jurídicos blindados em formato de quiz em poucos cliques.</p>
                   </div>
                 </Link>
+                )}
               </div>
             </div>
 

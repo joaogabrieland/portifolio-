@@ -104,8 +104,8 @@ export async function POST(
     const passwordHash = await bcrypt.hash(password, 12);
 
     const userResult = await query(
-      `INSERT INTO users (name, email, password_hash)
-       VALUES ($1, $2, $3) RETURNING id`,
+      `INSERT INTO users (name, email, password_hash, role)
+       VALUES ($1, $2, $3, 'member') RETURNING id`,
       [name.trim(), memberEmail, passwordHash]
     );
 
@@ -141,7 +141,7 @@ export async function POST(
     );
 
     // Generate JWT
-    const jwtToken = signToken({ userId: userId.toString(), email: memberEmail }, '30d');
+    const jwtToken = signToken({ userId: userId.toString(), email: memberEmail, role: 'member' }, '30d');
 
     return NextResponse.json({
       token: jwtToken,
