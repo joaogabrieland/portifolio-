@@ -1033,30 +1033,13 @@ export default function DashboardPage() {
 
           {/* ── Header ── */}
           <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/20 backdrop-blur-md">
-            {/* Left: logo + avatar + name */}
+            {/* Left: logo only */}
+            <a href="/dashboard" className="cursor-pointer transition-opacity hover:opacity-80">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
+            </a>
+            {/* Right: admin + meu estúdio + avatar/name + sair */}
             <div className="flex items-center gap-3">
-              <a href="/dashboard" className="cursor-pointer transition-opacity hover:opacity-80">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
-              </a>
-              {currentUser?.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={currentUser.avatar}
-                  alt="Avatar"
-                  className="w-9 h-9 rounded-full object-cover border border-gray-600 flex-shrink-0"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-gray-200 select-none">
-                    {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
-                  </span>
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
-            </div>
-            {/* Right: actions */}
-            <div className="flex items-center gap-2">
               {userEmail && isAdminEmail(userEmail) && (
                 <button
                   onClick={() => router.push('/admin')}
@@ -1073,21 +1056,23 @@ export default function DashboardPage() {
                 <Clapperboard className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Meu Estúdio</span>
               </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-300 text-xs font-bold hover:bg-white/10 transition-all"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Compartilhar</span>
-              </button>
-              <button
-                onClick={() => setIsReferralModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-900/50 bg-amber-900/10 text-amber-400 text-xs font-bold hover:bg-amber-900/20 transition-all"
-              >
-                <Gift className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Indique e Ganhe</span>
-              </button>
-              <TutorialButton onClick={() => setIsDashboardTutorialOpen(true)} />
+              <div className="flex items-center gap-2">
+                {currentUser?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentUser.avatar}
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full object-cover border border-gray-600 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-bold text-gray-200 select-none">
+                      {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                    </span>
+                  </div>
+                )}
+                <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
+              </div>
               <button
                 onClick={() => { agencySignOut(); router.push('/login'); }}
                 className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-900/10 transition-all"
