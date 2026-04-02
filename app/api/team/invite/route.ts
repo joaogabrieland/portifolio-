@@ -37,10 +37,11 @@ export async function GET(req: NextRequest) {
       [decoded.userId]
     );
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://creatorflowia.com';
+
     if (existing.rows.length > 0) {
-      const origin = req.nextUrl.origin;
       return NextResponse.json({
-        inviteUrl: `${origin}/invite/${existing.rows[0].token}`,
+        inviteUrl: `${baseUrl}/invite/${existing.rows[0].token}`,
         expiresAt: existing.rows[0].expires_at,
       });
     }
@@ -72,9 +73,8 @@ export async function GET(req: NextRequest) {
       [decoded.userId, inviteToken]
     );
 
-    const origin = req.nextUrl.origin;
     return NextResponse.json({
-      inviteUrl: `${origin}/invite/${inviteToken}`,
+      inviteUrl: `${baseUrl}/invite/${inviteToken}`,
       expiresAt: result.rows[0].expires_at,
     });
   } catch (error) {
