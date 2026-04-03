@@ -1296,7 +1296,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setIsAssistenteExecutivoOpen(true)}
+                  onClick={() => setIsClientesHubOpen(true)}
                   className="group bg-gradient-to-b from-blue-900/20 to-transparent border border-blue-900/50 hover:border-blue-500/50 rounded-2xl p-6 flex flex-col items-start text-left transition-all duration-300 hover:bg-blue-900/10"
                 >
                   <div className="p-2.5 rounded-xl bg-blue-900/30 border border-blue-800/50 mb-4">
