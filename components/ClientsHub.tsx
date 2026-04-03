@@ -1110,27 +1110,21 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 Gerar Proposta
               </button>
             )}
-            {/* Admin-only: Gestão de equipe */}
-            {isAdmin && (
-              <button
-                onClick={() => setIsTeamOpen(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-zinc-700 bg-zinc-800/80 text-zinc-300 rounded-xl font-bold text-sm hover:border-violet-600 hover:text-violet-400 transition-all"
-              >
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Minha Equipe</span>
-              </button>
-            )}
-            {/* Admin-only: Adicionar novo cliente */}
-            {isAdmin && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Novo Cliente</span>
-                <span className="sm:hidden">Novo</span>
-              </button>
-            )}
+            <button
+              onClick={() => setIsTeamOpen(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-zinc-700 bg-zinc-800/80 text-zinc-300 rounded-xl font-bold text-sm hover:border-violet-600 hover:text-violet-400 transition-all"
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Minha Equipe</span>
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Novo Cliente</span>
+              <span className="sm:hidden">Novo</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1216,16 +1210,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                         : 'border-zinc-800 hover:border-emerald-800'
                     }`}
                   >
-                    {/* Delete btn — admin only */}
-                    {isAdmin && (
-                      <button
-                        onClick={() => setClientToDelete(client)}
-                        className="absolute top-3 right-3 p-1.5 text-zinc-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                        aria-label={`Excluir ${client.brandName}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setClientToDelete(client)}
+                      className="absolute top-3 right-3 p-1.5 text-zinc-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      aria-label={`Excluir ${client.brandName}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
 
                     {/* Brand name + niche */}
                     <div>
@@ -1310,33 +1301,28 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 );
               })}
 
-              {/* Add card — admin only */}
-              {isAdmin && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-zinc-800 rounded-2xl text-zinc-400 hover:border-emerald-400 hover:text-emerald-500 transition-all min-h-[180px]"
-                >
-                  <Plus className="w-6 h-6" />
-                  <span className="text-sm font-bold">Novo Cliente</span>
-                </button>
-              )}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-zinc-800 rounded-2xl text-zinc-400 hover:border-emerald-400 hover:text-emerald-500 transition-all min-h-[180px]"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="text-sm font-bold">Novo Cliente</span>
+              </button>
             </div>
           )}
         </div>
         )}
       </main>
 
-      {/* ── FAB Mobile — admin only ── */}
-      {isAdmin && (
-        <div className="fixed bottom-6 right-6 sm:hidden z-40">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-emerald-500/40 hover:opacity-90 transition-all"
-          >
-            <Plus className="w-5 h-5" /> Novo
-          </button>
-        </div>
-      )}
+      {/* ── FAB Mobile ── */}
+      <div className="fixed bottom-6 right-6 sm:hidden z-40">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-emerald-500/40 hover:opacity-90 transition-all"
+        >
+          <Plus className="w-5 h-5" /> Novo
+        </button>
+      </div>
 
       <ClientOnboardingModal
         isOpen={isModalOpen}

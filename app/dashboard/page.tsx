@@ -1381,7 +1381,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 )}
-                {isOwner && (
                 <Link
                   href="/dashboard/gerador-contratos"
                   className="group bg-[#0a0a0a] border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300 hover:bg-purple-500/5"
@@ -1397,7 +1396,6 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Crie contratos jurídicos blindados em formato de quiz em poucos cliques.</p>
                   </div>
                 </Link>
-                )}
               </div>
             </div>
 
