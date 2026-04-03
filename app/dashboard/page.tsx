@@ -283,9 +283,10 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState<'owner' | 'member'>('owner');
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
-  // RBAC — role from /api/auth/me (server-verified, stored by AuthGuard).
-  // Default: owner — so the account owner never loses access before hydration.
+  // RBAC — role from /api/auth/me (server-verified).
+  // Only set after /api/auth/me responds to avoid stale localStorage races.
   const { currentUser, signOut: agencySignOut } = useAgency();
   const isOwner = userRole === 'owner';
 
@@ -297,11 +298,12 @@ export default function DashboardPage() {
     setUserPlan(plan);
     setUserName(localStorage.getItem('cf_name') || '');
     setUserEmail(localStorage.getItem('cf_email') || '');
-    const role = localStorage.getItem('cf_role');
-    setUserRole(role === 'member' ? 'member' : 'owner');
+    // Read cached role immediately so the UI doesn't flash
+    const cachedRole = localStorage.getItem('cf_role');
+    setUserRole(cachedRole === 'member' ? 'member' : 'owner');
     const token = localStorage.getItem('cf_token');
     if (token) {
-      // Fetch fresh user data to ensure role/plan are up-to-date
+      // Fetch fresh user data — this is the SOURCE OF TRUTH for role
       fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -314,7 +316,8 @@ export default function DashboardPage() {
             if (data.user.email) { localStorage.setItem('cf_email', data.user.email); setUserEmail(data.user.email); }
           }
         })
-        .catch(() => { /* ignore */ });
+        .catch(() => { /* ignore */ })
+        .finally(() => setRoleLoaded(true));
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })
@@ -330,6 +333,8 @@ export default function DashboardPage() {
           }
         })
         .catch(() => { /* ignore */ });
+    } else {
+      setRoleLoaded(true);
     }
   }, []);
 
@@ -813,6 +818,17 @@ export default function DashboardPage() {
       if (isAssistenteExecutivoOpen) setIsAssistenteExecutivoOpen(false);
       if (isCreatorStockOpen) setIsCreatorStockOpen(false);
       setActiveAgentId(id);
+  }
+
+  // Wait for /api/auth/me so role-gated sections render correctly from the start
+  if (!roleLoaded) {
+    return (
+      <AuthGuard>
+        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
+        </div>
+      </AuthGuard>
+    );
   }
 
   return (

@@ -982,6 +982,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [portalClient, setPortalClient]     = useState<Client | null>(null);
   const [hubView, setHubView]               = useState<'bi' | 'clientes'>(isAdmin ? 'bi' : 'clientes');
+  // Sync hubView if isAdmin prop changes after initial mount (e.g. role loaded async)
+  const prevIsAdminRef = useRef(isAdmin);
+  useEffect(() => {
+    if (isAdmin && !prevIsAdminRef.current) setHubView('bi');
+    prevIsAdminRef.current = isAdmin;
+  }, [isAdmin]);
   const [alertsCache, setAlertsCache]       = useState<Record<string, ClientAlerts>>({});
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [portalToken, setPortalToken]       = useState('');
