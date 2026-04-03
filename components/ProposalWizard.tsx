@@ -7,7 +7,7 @@ import {
   Film, Mic, Sparkles, DollarSign, Calendar,
   RotateCcw, Lightbulb, Layers, Package, X,
   FileText, Clock, ChevronRight, Clapperboard,
-  Building2, Target,
+  Building2, Target, Link,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -224,6 +224,7 @@ function ProposalDocument({ proposal, onBack, onNew }: {
 }) {
   const { data, createdAt } = proposal;
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const extras = data.extraCosts.filter(c => c.item.trim());
   const extrasTotal = totalExtras(extras);
@@ -244,28 +245,71 @@ function ProposalDocument({ proposal, onBack, onNew }: {
     setTimeout(() => setCopied(false), 3000);
   }
 
+  async function handleCopyLink() {
+    const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const proposalId = `proposta-${Date.now()}-${randomId}`;
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/proposta/${proposalId}`;
+
+    try {
+      const dbStr = localStorage.getItem('mock_database_proposals') || '[]';
+      const db = JSON.parse(dbStr);
+
+      db.push({
+        id: proposalId,
+        title: data.clientName || 'Proposta sem nome',
+        status: 'Enviada',
+        date: new Date().toISOString(),
+        data: data,
+      });
+      localStorage.setItem('mock_database_proposals', JSON.stringify(db));
+
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+    }
+  }
+
   return (
     <>
       {/* Print styles */}
       <style>{`
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          html, body { height: auto !important; overflow: visible !important; }
+          html, body { height: auto !important; overflow: visible !important; margin: 0; padding: 0; }
           body > * { visibility: hidden !important; }
           .printable-doc, .printable-doc * { visibility: visible !important; }
           .printable-doc {
             position: absolute !important;
             top: 0 !important; left: 0 !important; right: 0 !important;
+            width: 100% !important;
+            height: auto !important;
             padding: 24px !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            display: block !important;
           }
           .no-print { display: none !important; }
           .avoid-break {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            overflow: visible !important;
+            display: block !important;
+            margin-bottom: 32px !important;
           }
           .page2-start {
             break-before: page !important;
             page-break-before: always !important;
+          }
+          .printable-doc * {
+            overflow: visible !important;
+            display: block !important;
+          }
+          .printable-doc > div {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 32px !important;
           }
         }
       `}</style>
@@ -511,20 +555,32 @@ function ProposalDocument({ proposal, onBack, onNew }: {
               </div>
 
               {/* ── Action buttons ── */}
-              <div className="no-print flex items-center gap-3 pt-2 pb-6">
+              <div className="no-print flex flex-col sm:flex-row items-center gap-4 w-full mt-6">
                 <button onClick={handleCopy}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all border ${
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border h-12 ${
                     copied
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                       : 'bg-zinc-900 text-zinc-300 hover:text-white border-zinc-700 hover:border-zinc-600'
                   }`}>
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Copiado!' : 'Copiar Resumo para WhatsApp'}
+                  <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar Resumo para WhatsApp'}</span>
+                  <span className="sm:hidden">{copied ? 'Copiado!' : 'WhatsApp'}</span>
+                </button>
+                <button onClick={handleCopyLink}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border h-12 ${
+                    linkCopied
+                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                      : 'bg-zinc-900 text-zinc-300 hover:text-white border-zinc-700 hover:border-zinc-600'
+                  }`}>
+                  {linkCopied ? <CheckCircle className="w-4 h-4" /> : <Link className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{linkCopied ? 'Link Copiado!' : 'Copiar Link'}</span>
+                  <span className="sm:hidden">{linkCopied ? 'Link!' : 'Link'}</span>
                 </button>
                 <button onClick={() => window.print()}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
+                  className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors h-12">
                   <Printer className="w-4 h-4" />
-                  Salvar como PDF
+                  <span className="hidden sm:inline">Salvar como PDF</span>
+                  <span className="sm:hidden">PDF</span>
                 </button>
               </div>
 
@@ -534,6 +590,80 @@ function ProposalDocument({ proposal, onBack, onNew }: {
         </div>
       </div>
     </>
+  );
+}
+
+// ─── ProposalItem Component ───────────────────────────────────────────────
+
+function ProposalItem({ proposal, onView }: {
+  proposal: SavedProposal;
+  onView: (p: SavedProposal) => void;
+}) {
+  const [status, setStatus] = useState('Enviada');
+
+  useEffect(() => {
+    const updateStatus = () => {
+      try {
+        const dbStr = localStorage.getItem('mock_database_proposals') || '[]';
+        const db = JSON.parse(dbStr);
+        const dbProposal = db.find((p: any) => p.id === proposal.id);
+        if (dbProposal && dbProposal.status) {
+          setStatus(dbProposal.status);
+        } else {
+          setStatus('Enviada');
+        }
+      } catch (e) {
+        setStatus('Enviada');
+      }
+    };
+
+    updateStatus();
+    window.addEventListener('storage', updateStatus);
+    return () => window.removeEventListener('storage', updateStatus);
+  }, [proposal.id]);
+
+  const extras = proposal.data.extraCosts.filter(c => c.item.trim());
+  const total = totalExtras(extras) + (parseFloat(proposal.data.serviceFee.replace(',', '.')) || 0);
+
+  const statusColor = status === 'Aprovado'
+    ? 'bg-green-500/20 text-green-400 border-green-500/50'
+    : status === 'Alteração'
+    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+    : 'bg-zinc-700/30 text-zinc-400 border-zinc-600/50';
+
+  return (
+    <div className="flex items-center gap-4 px-5 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-2xl transition-colors group">
+      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+        <Building2 className="w-5 h-5 text-indigo-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <p className="text-sm font-black text-white truncate">{proposal.data.clientName || 'Cliente sem nome'}</p>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 border ${statusColor}`}>
+            {status}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5">
+          <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {formatDate(proposal.createdAt)}
+          </span>
+          <span className="text-xs text-zinc-600">·</span>
+          <span className="text-xs text-zinc-500">{proposal.data.videoType || '—'}</span>
+        </div>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="text-sm font-black text-white tabular-nums">
+          {total > 0 ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+        </p>
+        <p className="text-[10px] text-zinc-600">investimento</p>
+      </div>
+      <button onClick={() => onView(proposal)}
+        className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 group-hover:bg-zinc-700 text-zinc-400 group-hover:text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
+        Ver
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -585,40 +715,9 @@ function ProposalHistory({ proposals, onNew, onView, onBack }: {
           </div>
         ) : (
           <div className="space-y-3">
-            {[...proposals].reverse().map(p => {
-              const extras = p.data.extraCosts.filter(c => c.item.trim());
-              const total = totalExtras(extras) + (parseFloat(p.data.serviceFee.replace(',', '.')) || 0);
-              return (
-                <div key={p.id}
-                  className="flex items-center gap-4 px-5 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-2xl transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-indigo-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-white truncate">{p.data.clientName || 'Cliente sem nome'}</p>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-zinc-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(p.createdAt)}
-                      </span>
-                      <span className="text-xs text-zinc-600">·</span>
-                      <span className="text-xs text-zinc-500">{p.data.videoType || '—'}</span>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-black text-white tabular-nums">
-                      {total > 0 ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                    </p>
-                    <p className="text-[10px] text-zinc-600">investimento</p>
-                  </div>
-                  <button onClick={() => onView(p)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 group-hover:bg-zinc-700 text-zinc-400 group-hover:text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
-                    Ver
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })}
+            {[...proposals].reverse().map(p => (
+              <ProposalItem key={p.id} proposal={p} onView={onView} />
+            ))}
           </div>
         )}
       </div>
@@ -649,6 +748,7 @@ export default function ProposalWizard({ onBack }: Props) {
       if (savedLogo) setData(prev => ({ ...prev, agencyLogo: savedLogo }));
     } catch { /* ignore */ }
   }, []);
+
 
   function saveProposal(d: WizardData): SavedProposal {
     const p: SavedProposal = {

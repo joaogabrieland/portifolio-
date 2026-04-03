@@ -2389,6 +2389,10 @@ interface ScriptScene {
   storyboardUrl?: string;
   storyboardText?: string;
   freeContent?: string;
+  tags?: string[];
+  location?: string;
+  shotSize?: string;
+  isRecorded?: boolean;
 }
 
 interface ScriptDocument {
@@ -2457,6 +2461,8 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
   const [selectedPkgId, setSelectedPkgId]         = useState<string>(packages[0]?.id ?? '');
   const [viewMode, setViewMode]                   = useState<'edicao' | 'shotlist'>('edicao');
   const [expandedId, setExpandedId]               = useState<string | null>(null);
+  const [shotlistFilters, setShotlistFilters]     = useState<Record<string, string[]>>({});
+  const [sceneInputs, setSceneInputs]             = useState<Record<string, { location: string; shotSize: string }>>({});
   const [newPkgTitle, setNewPkgTitle]             = useState('');
   const [isAddingPkg, setIsAddingPkg]             = useState(false);
   const [addingSubFolderFor, setAddingSubFolderFor] = useState<string | null>(null);
@@ -2700,16 +2706,16 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
   // ── Scene CRUD ────────────────────────────────────────────────
   const addScene = (pkgId: string, script: ScriptDocument) =>
     updateScript(pkgId, {
-      ...script, scenes: [...script.scenes, { id: crypto.randomUUID(), visual: '', audio: '', isChecked: false }],
+      ...script, scenes: [...script.scenes, { id: crypto.randomUUID(), visual: '', audio: '', isChecked: false, tags: [], location: '', shotSize: '', isRecorded: false }],
     });
 
   const addFreeTextBlock = (pkgId: string, script: ScriptDocument) =>
     updateScript(pkgId, {
       ...script,
-      scenes: [...script.scenes, { id: crypto.randomUUID(), type: 'free_text' as const, visual: '', audio: '', isChecked: false, freeContent: '' }],
+      scenes: [...script.scenes, { id: crypto.randomUUID(), type: 'free_text' as const, visual: '', audio: '', isChecked: false, freeContent: '', tags: [], location: '', shotSize: '', isRecorded: false }],
     });
 
-  const updateScene = (pkgId: string, script: ScriptDocument, sceneId: string, field: 'visual' | 'audio' | 'freeContent', value: string) =>
+  const updateScene = (pkgId: string, script: ScriptDocument, sceneId: string, field: string, value: any) =>
     updateScript(pkgId, {
       ...script, scenes: script.scenes.map(sc => sc.id === sceneId ? { ...sc, [field]: value } : sc),
     });
@@ -3388,10 +3394,10 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                                           )}
                                         </div>
                                       </div>
+
+                                      {/* Visual / Ação */}
                                       <div>
-                                        <label className="text-[10px] font-bold text-zinc-400 mb-1 flex items-center gap-1">
-                                          <Camera className="w-3 h-3" /> Visual / Ação
-                                        </label>
+                                        <label className="block text-xs text-gray-400 uppercase font-semibold mb-2">Descrição Visual / Ação</label>
                                         <textarea
                                           value={scene.visual}
                                           onChange={e => updateScene(selectedPkg.id, script, scene.id, 'visual', e.target.value)}
@@ -3400,10 +3406,10 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                                           className={`${MODAL_INPUT_CLS} resize-none text-xs`}
                                         />
                                       </div>
+
+                                      {/* Áudio / Fala */}
                                       <div>
-                                        <label className="text-[10px] font-bold text-zinc-400 mb-1 flex items-center gap-1">
-                                          <Mic className="w-3 h-3" /> Áudio / Fala
-                                        </label>
+                                        <label className="block text-xs text-gray-400 uppercase font-semibold mb-2">Áudio / Fala / OFF</label>
                                         <textarea
                                           value={scene.audio}
                                           onChange={e => updateScene(selectedPkg.id, script, scene.id, 'audio', e.target.value)}
@@ -3412,9 +3418,138 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                                           className={`${MODAL_INPUT_CLS} resize-none text-xs`}
                                         />
                                       </div>
+
+                                      {/* Locação e Tamanho do Plano (Text inputs com Enter-to-submit) */}
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="block text-[10px] text-zinc-400 uppercase font-semibold mb-1">Locação</label>
+                                          <input
+                                            type="text"
+                                            placeholder="Ex: Externa Rua"
+                                            value={sceneInputs[scene.id]?.location ?? scene.location ?? ''}
+                                            onChange={(e) => {
+                                              setSceneInputs(prev => ({
+                                                ...prev,
+                                                [scene.id]: { ...prev[scene.id], location: e.target.value }
+                                              }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const value = (sceneInputs[scene.id]?.location ?? '').trim();
+                                                if (value) {
+                                                  updateScene(selectedPkg.id, script, scene.id, 'location', value);
+                                                  setSceneInputs(prev => ({
+                                                    ...prev,
+                                                    [scene.id]: { ...prev[scene.id], location: '' }
+                                                  }));
+                                                }
+                                              }
+                                            }}
+                                            className="w-full px-2 py-1.5 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-teal-500"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-[10px] text-zinc-400 uppercase font-semibold mb-1">Tamanho do Plano</label>
+                                          <input
+                                            type="text"
+                                            placeholder="Ex: Close"
+                                            value={sceneInputs[scene.id]?.shotSize ?? scene.shotSize ?? ''}
+                                            onChange={(e) => {
+                                              setSceneInputs(prev => ({
+                                                ...prev,
+                                                [scene.id]: { ...prev[scene.id], shotSize: e.target.value }
+                                              }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const value = (sceneInputs[scene.id]?.shotSize ?? '').trim();
+                                                if (value) {
+                                                  updateScene(selectedPkg.id, script, scene.id, 'shotSize', value);
+                                                  setSceneInputs(prev => ({
+                                                    ...prev,
+                                                    [scene.id]: { ...prev[scene.id], shotSize: '' }
+                                                  }));
+                                                }
+                                              }
+                                            }}
+                                            className="w-full px-2 py-1.5 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-orange-500"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Pills: Location, Shot Size, and Tags */}
+                                      <div className="flex flex-wrap gap-2 pt-2">
+                                        {scene.location && (
+                                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-900/40 border border-teal-700/40 text-teal-200 text-xs font-bold">
+                                            📍 {scene.location}
+                                            <button
+                                              onClick={() => updateScene(selectedPkg.id, script, scene.id, 'location', '')}
+                                              className="text-teal-400 hover:text-teal-300 transition-colors"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        )}
+                                        {scene.shotSize && (
+                                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-900/40 border border-orange-700/40 text-orange-200 text-xs font-bold">
+                                            🎬 {scene.shotSize}
+                                            <button
+                                              onClick={() => updateScene(selectedPkg.id, script, scene.id, 'shotSize', '')}
+                                              className="text-orange-400 hover:text-orange-300 transition-colors"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+                                        )}
+                                        {(scene.tags || []).length > 0 && (
+                                          <>
+                                            {(scene.tags || []).map((tag, tIdx) => (
+                                              <div key={tIdx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-900/50 border border-purple-700/50 text-purple-200 text-xs font-bold">
+                                                {tag}
+                                                <button
+                                                  onClick={() => {
+                                                    const newTags = (scene.tags || []).filter((_, i) => i !== tIdx);
+                                                    updateScene(selectedPkg.id, script, scene.id, 'tags', newTags);
+                                                  }}
+                                                  className="text-purple-400 hover:text-purple-300 transition-colors"
+                                                >
+                                                  ✕
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </>
+                                        )}
+                                      </div>
+
+                                      {/* Tags input */}
+                                      <input
+                                        type="text"
+                                        placeholder="Adicionar tag (ex: Drone) e prima Enter"
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const value = (e.target as HTMLInputElement).value.trim();
+                                            if (value) {
+                                              const newTags = [...(scene.tags || []), value];
+                                              updateScene(selectedPkg.id, script, scene.id, 'tags', newTags);
+                                              (e.target as HTMLInputElement).value = '';
+                                            }
+                                          }
+                                        }}
+                                        className="w-full px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-purple-500"
+                                      />
                                     </div>
                                     )
                                   ))}
+
+                                  {/* Add scene button at bottom — Modo Edição only */}
+                                  <button
+                                    onClick={() => addScene(selectedPkg.id, script)}
+                                    className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-white/20 bg-transparent hover:bg-white/5 transition-all text-center text-sm font-bold text-zinc-400 hover:text-zinc-300 flex items-center justify-center gap-2"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                    Adicionar Nova Cena
+                                  </button>
                                 </div>
                               </div>
                             </>
@@ -3466,42 +3601,169 @@ const ClientRoteirosTab: React.FC<{ client: Client }> = ({ client }) => {
                             </div>
                           )}
 
-                          <div className="space-y-3">
-                            {script.scenes.map((scene, sIdx) => (
-                              <div key={scene.id} className="space-y-2">
-                                {/* Scene row */}
-                                <div
-                                  className={`flex items-start gap-4 px-4 py-4 rounded-xl border-2 transition-all cursor-pointer ${
-                                    scene.isChecked
-                                      ? 'border-emerald-700/50 bg-emerald-900/10 opacity-60'
-                                      : 'border-zinc-800 bg-zinc-900 hover:border-indigo-700'
-                                  }`}
-                                  onClick={() => toggleSceneCheck(selectedPkg.id, script, scene.id)}
-                                >
-                                  <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5 transition-all ${
-                                    scene.isChecked
-                                      ? 'bg-emerald-500 border-emerald-500'
-                                      : 'border-zinc-600'
-                                  }`}>
+                          {/* ── Filtros de Gravação no Set ── */}
+                          {script.scenes.length > 0 && (() => {
+                            // Extract all unique tags, locations, and shot sizes
+                            const uniqueValues = new Set<string>();
+                            script.scenes.forEach(scene => {
+                              if (scene.tags && Array.isArray(scene.tags)) {
+                                scene.tags.forEach(tag => { if (tag?.trim()) uniqueValues.add(tag); });
+                              }
+                              if (scene.location?.trim()) uniqueValues.add(scene.location);
+                              if (scene.shotSize?.trim()) uniqueValues.add(scene.shotSize);
+                            });
+                            const allFilters = Array.from(uniqueValues).sort();
+                            const activeFilters = shotlistFilters[script.id] ?? [];
+
+                            // Filter scenes based on active filters
+                            const filteredScenes = activeFilters.length === 0
+                              ? script.scenes
+                              : script.scenes.filter(scene => {
+                                  const sceneValues = new Set<string>();
+                                  if (scene.tags && Array.isArray(scene.tags)) {
+                                    scene.tags.forEach(tag => { if (tag?.trim()) sceneValues.add(tag); });
+                                  }
+                                  if (scene.location?.trim()) sceneValues.add(scene.location);
+                                  if (scene.shotSize?.trim()) sceneValues.add(scene.shotSize);
+                                  return activeFilters.some(filter => sceneValues.has(filter));
+                                });
+
+                            const toggleFilter = (filterValue: string) => {
+                              setShotlistFilters(prev => ({
+                                ...prev,
+                                [script.id]: activeFilters.includes(filterValue)
+                                  ? activeFilters.filter(f => f !== filterValue)
+                                  : [...activeFilters, filterValue],
+                              }));
+                            };
+
+                            return (
+                              <div className="space-y-3">
+                                <div className="px-4 py-3 rounded-xl bg-zinc-800/30 border border-zinc-800/50">
+                                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2.5">
+                                    Filtros de Gravação no Set
+                                  </p>
+                                  {allFilters.length === 0 ? (
+                                    <p className="text-xs text-zinc-500">Nenhuma tag, locação ou tamanho de plano configurado.</p>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                      {allFilters.map(filter => (
+                                        <button
+                                          key={filter}
+                                          onClick={() => toggleFilter(filter)}
+                                          className={`px-3 py-1.5 rounded-full text-sm font-bold border transition-all ${
+                                            activeFilters.includes(filter)
+                                              ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                                              : 'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:border-white/20'
+                                          }`}
+                                        >
+                                          {filter}
+                                        </button>
+                                      ))}
+                                      {activeFilters.length > 0 && (
+                                        <button
+                                          onClick={() => setShotlistFilters(prev => ({ ...prev, [script.id]: [] }))}
+                                          className="ml-auto px-3 py-1.5 rounded-full text-sm font-bold border border-zinc-600 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 transition-all"
+                                        >
+                                          Limpar Filtros
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* ── Filtered scenes ── */}
+                                <div className="space-y-3">
+                                  {filteredScenes.length === 0 ? (
+                                    <div className="text-center py-12 px-4 text-zinc-500 text-sm">
+                                      Nenhuma cena corresponde aos filtros selecionados.
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {filteredScenes.map((scene, sIdx) => {
+                                        const originalIdx = script.scenes.findIndex(s => s.id === scene.id);
+                                        return (
+                                          <div key={scene.id} className="space-y-3 p-4 rounded-xl border-2 border-zinc-800 bg-zinc-900 transition-all hover:border-indigo-700">
+                                {/* Scene header with checkbox and recorded toggle */}
+                                <div className="flex items-start gap-4">
+                                  <div
+                                    onClick={() => toggleSceneCheck(selectedPkg.id, script, scene.id)}
+                                    className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5 transition-all cursor-pointer ${
+                                      scene.isChecked
+                                        ? 'bg-emerald-500 border-emerald-500'
+                                        : 'border-zinc-600 hover:border-emerald-500'
+                                    }`}
+                                  >
                                     {scene.isChecked && <Check className="w-3 h-3 text-white" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${scene.isChecked ? 'text-emerald-500' : 'text-indigo-400'}`}>
                                       CENA {sIdx + 1}
                                     </p>
-                                    <p className={`text-sm font-bold leading-relaxed ${scene.isChecked ? 'line-through text-zinc-600' : 'text-zinc-200'}`}>
+                                  </div>
+                                  {/* Recorded toggle button */}
+                                  <button
+                                    onClick={() => {
+                                      const isRecorded = scene.isRecorded || false;
+                                      updateScene(selectedPkg.id, script, scene.id, 'isRecorded', !isRecorded);
+                                    }}
+                                    className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                      scene.isRecorded
+                                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                        : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700'
+                                    }`}
+                                  >
+                                    {scene.isRecorded ? '✓ Gravado' : 'Gravado'}
+                                  </button>
+                                </div>
+
+                                {/* Visual and Audio — READ ONLY */}
+                                <div className="space-y-2">
+                                  <div>
+                                    <label className="block text-xs text-gray-400 uppercase font-semibold mb-2">Descrição Visual / Ação</label>
+                                    <p className="px-3 py-2 bg-zinc-800/30 border border-zinc-700 rounded-lg text-sm text-zinc-200 whitespace-pre-wrap break-words">
                                       {scene.visual || '(sem descrição visual)'}
                                     </p>
-                                    {scene.audio && (
-                                      <p className="text-xs text-zinc-400 mt-1 italic leading-relaxed">
-                                        &ldquo;{scene.audio}&rdquo;
-                                      </p>
-                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-400 uppercase font-semibold mb-2">Áudio / Fala / OFF</label>
+                                    <p className="px-3 py-2 bg-zinc-800/30 border border-zinc-700 rounded-lg text-sm text-zinc-200 whitespace-pre-wrap break-words">
+                                      {scene.audio || '(sem áudio)'}
+                                    </p>
                                   </div>
                                 </div>
+
+                                {/* Metadata Pills: Location, Shot Size, and Tags */}
+                                <div className="flex flex-wrap gap-2">
+                                  {scene.location && (
+                                    <div className="px-2.5 py-1 rounded-full bg-teal-900/40 border border-teal-700/40 text-teal-200 text-xs font-bold">
+                                      📍 {scene.location}
+                                    </div>
+                                  )}
+                                  {scene.shotSize && (
+                                    <div className="px-2.5 py-1 rounded-full bg-orange-900/40 border border-orange-700/40 text-orange-200 text-xs font-bold">
+                                      🎬 {scene.shotSize}
+                                    </div>
+                                  )}
+                                  {(scene.tags || []).length > 0 && (
+                                    <>
+                                      {(scene.tags || []).map((tag, tIdx) => (
+                                        <div key={tIdx} className="px-2.5 py-1 rounded-full bg-purple-900/50 border border-purple-700/50 text-purple-200 text-xs font-bold">
+                                          {tag}
+                                        </div>
+                                      ))}
+                                    </>
+                                  )}
+                                </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()}
 
                           {/* Progress bar */}
                           {script.scenes.length > 0 && (
@@ -6060,6 +6322,18 @@ const ClientDashboard: React.FC<ClientDashboardProps> = ({ client, onBack, onNav
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const sidebarHealth                   = useSidebarHealth(client.id);
   const [showReport,   setShowReport]   = useState(false);
+
+  // ── Persistência de navegação (sessionStorage) ──
+  useEffect(() => {
+    const savedTab = sessionStorage.getItem(`hub_active_tab_${client.id}`);
+    if (savedTab && TABS.some(t => t.id === savedTab)) {
+      setActiveTab(savedTab as TabId);
+    }
+  }, [client.id]);
+
+  useEffect(() => {
+    sessionStorage.setItem(`hub_active_tab_${client.id}`, activeTab);
+  }, [activeTab, client.id]);
 
   // ── Motor de Ideias state ─────────────────
   const [themeInput, setThemeInput]                 = useState('');

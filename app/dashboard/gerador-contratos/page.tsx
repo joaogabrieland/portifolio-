@@ -358,11 +358,11 @@ function PrintableContract({ data }: { data: ContractData }) {
   const confidentialityLabel = CONFIDENTIALITY_LABELS[data.confidentiality] ?? data.confidentiality;
   const ipLabel = IP_LABELS[data.intellectualProperty] ?? data.intellectualProperty;
 
-  const p = 'text-base leading-8 text-justify mb-4';
-  const clauseTitle = 'font-bold text-base mt-8 mb-2 uppercase tracking-wide';
+  const p = 'text-base leading-8 text-justify mb-4 print:break-inside-avoid';
+  const clauseTitle = 'font-bold text-base mt-8 mb-2 uppercase tracking-wide print:break-inside-avoid';
 
   return (
-    <div id="printable-contract" className="hidden print:block bg-white text-black font-serif p-16 max-w-4xl mx-auto">
+    <div id="printable-contract" className="hidden print:block bg-white text-black font-serif p-16 max-w-4xl mx-auto print:overflow-visible">
       {/* Header */}
       <div className="text-center mb-12">
         <p className="text-xs tracking-widest uppercase mb-4 text-gray-500">Instrumento Particular</p>
@@ -501,6 +501,7 @@ export default function GeradorContratosPage() {
   const [isGenerated, setIsGenerated] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [printData, setPrintData] = useState<ContractData>(INITIAL_DATA);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const update = (key: keyof ContractData, value: string) =>
     setContractData((prev) => ({ ...prev, [key]: value }));
@@ -528,6 +529,18 @@ export default function GeradorContratosPage() {
     setContractData(INITIAL_DATA);
     setCurrentStep(1);
     setIsGenerated(false);
+  };
+
+  const handleCopyLink = async () => {
+    const proposalId = Math.random().toString(36).substring(2, 9);
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/proposta/${proposalId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Erro ao copiar link:', err);
+    }
   };
 
   return (
@@ -574,6 +587,26 @@ export default function GeradorContratosPage() {
                 >
                   <Download className="w-4 h-4" />
                   Baixar / Imprimir PDF
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className={`inline-flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition-all duration-200 ${
+                    linkCopied
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-500'
+                  }`}
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Link Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4" />
+                      Copiar Link
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleNewContract}
