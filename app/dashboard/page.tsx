@@ -301,12 +301,24 @@ export default function DashboardPage() {
     setUserRole(role === 'member' ? 'member' : 'owner');
     const token = localStorage.getItem('cf_token');
     if (token) {
+      // Fetch fresh user data to ensure role/plan are up-to-date
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.user) {
+            const freshRole = data.user.role || 'owner';
+            localStorage.setItem('cf_role', freshRole);
+            setUserRole(freshRole === 'member' ? 'member' : 'owner');
+            if (data.user.plan) { localStorage.setItem('cf_plan', data.user.plan); setUserPlan(data.user.plan); }
+            if (data.user.name) { localStorage.setItem('cf_name', data.user.name); setUserName(data.user.name); }
+            if (data.user.email) { localStorage.setItem('cf_email', data.user.email); setUserEmail(data.user.email); }
+          }
+        })
+        .catch(() => { /* ignore */ });
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })
         .catch(() => { /* ignore */ });
-      // User data (email, name, plan) is already fetched by AuthGuard via /api/auth/me
-      // and stored in localStorage. No duplicate call needed here — just read from storage above.
 
       // Fetch portal token for the share button (client portal link)
       fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })

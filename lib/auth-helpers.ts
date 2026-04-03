@@ -28,11 +28,14 @@ export async function authenticateAndCheckCRM(req: NextRequest): Promise<AuthRes
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
 
+    // For members, check their owner's subscription (members inherit CRM access)
+    const effectiveUserId = await resolveOwnerId(decoded.userId);
+
     const result = await query(
       `SELECT s.plan FROM subscriptions s
        WHERE s.user_id = $1 AND s.status = 'active'
        ORDER BY s.created_at DESC LIMIT 1`,
-      [decoded.userId]
+      [effectiveUserId]
     );
 
     if (result.rows.length === 0) {

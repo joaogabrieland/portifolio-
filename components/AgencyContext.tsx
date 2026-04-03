@@ -79,11 +79,8 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
     const cfName  = localStorage.getItem('cf_name')  || '';
     const cfRole  = localStorage.getItem('cf_role');
 
-    // Always force admin for known demo/owner accounts, regardless of stored role
-    const FORCED_ADMIN_EMAILS = ['teste@creatorflow.com', 'teste@creatorflowia.com', 'marcosvlogs12@gmail.com'];
-    const role: 'admin' | 'user' = FORCED_ADMIN_EMAILS.includes(cfEmail.toLowerCase())
-      ? 'admin'
-      : cfRole === 'user' ? 'user' : 'admin';
+    // Derive AgencyContext role from the server-verified cf_role stored by AuthGuard
+    const role: 'admin' | 'user' = cfRole === 'member' ? 'user' : 'admin';
 
     let members = stored.teamMembers;
 
@@ -100,16 +97,6 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
       };
       members = [owner, ...members];
       saveAgencyState({ teamMembers: members, currentUserId: owner.id });
-    }
-
-    // Patch any existing member record that has the wrong role for forced-admin emails
-    if (FORCED_ADMIN_EMAILS.includes(cfEmail.toLowerCase())) {
-      members = members.map(m =>
-        m.email.toLowerCase() === cfEmail.toLowerCase()
-          ? { ...m, role: 'admin' as const, isOwner: true }
-          : m
-      );
-      saveAgencyState({ teamMembers: members, currentUserId: stored.currentUserId });
     }
 
     setTeamMembers(members);
