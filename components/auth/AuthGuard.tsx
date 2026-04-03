@@ -64,6 +64,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace('/login');
           return null;
         }
+        // Rate limited or server error — fall back to localStorage
+        if (res.status === 429 || res.status >= 500) {
+          const cachedEmail = localStorage.getItem('cf_email');
+          if (cachedEmail) {
+            setChecked(true);
+          } else {
+            router.replace('/login');
+          }
+          return null;
+        }
         return res.json();
       })
       .then((data) => {
@@ -94,8 +104,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         setChecked(true);
       })
       .catch(() => {
-        // Network error — redirect to login for safety
-        router.replace('/login');
+        // Network error — fall back to localStorage if available, else login
+        const cachedEmail = localStorage.getItem('cf_email');
+        if (cachedEmail) {
+          setChecked(true);
+        } else {
+          router.replace('/login');
+        }
       });
   }, [pathname, router]);
 

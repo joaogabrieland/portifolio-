@@ -303,21 +303,10 @@ export default function DashboardPage() {
     setUserRole(cachedRole === 'member' ? 'member' : 'owner');
     const token = localStorage.getItem('cf_token');
     if (token) {
-      // Fetch fresh user data — this is the SOURCE OF TRUTH for role
-      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.user) {
-            const freshRole = data.user.role || 'owner';
-            localStorage.setItem('cf_role', freshRole);
-            setUserRole(freshRole === 'member' ? 'member' : 'owner');
-            if (data.user.plan) { localStorage.setItem('cf_plan', data.user.plan); setUserPlan(data.user.plan); }
-            if (data.user.name) { localStorage.setItem('cf_name', data.user.name); setUserName(data.user.name); }
-            if (data.user.email) { localStorage.setItem('cf_email', data.user.email); setUserEmail(data.user.email); }
-          }
-        })
-        .catch(() => { /* ignore */ })
-        .finally(() => setRoleLoaded(true));
+      // AuthGuard already fetches /api/auth/me and writes fresh data to localStorage
+      // BEFORE this component mounts (AuthGuard blocks rendering until checked=true).
+      // No need to call /api/auth/me again — just read the already-fresh localStorage values.
+      setRoleLoaded(true);
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })

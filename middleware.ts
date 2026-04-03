@@ -115,7 +115,9 @@ export function middleware(request: NextRequest) {
   }
 
   // --- Auth routes: separate stricter rate limiting ---
-  if (pathname.startsWith('/api/auth/')) {
+  // /api/auth/me is a read-only identity endpoint (Bearer-authenticated),
+  // NOT a brute-force target — use the general 200/min rate limit instead.
+  if (pathname.startsWith('/api/auth/') && pathname !== '/api/auth/me') {
     const ip = getClientIp(request);
     const maxAttempts = pathname.includes('/login') ? AUTH_RATE_LIMIT_MAX_LOGIN : AUTH_RATE_LIMIT_MAX_REGISTER;
     const { allowed } = checkAuthRateLimit(ip, maxAttempts);
