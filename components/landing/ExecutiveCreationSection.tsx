@@ -242,7 +242,7 @@ function PremiumVideoContainer({
         </div>
 
         <div className="relative aspect-[4/3] bg-[#0d0e14]">
-          <video autoPlay loop muted playsInline className="w-full h-full object-cover" src="" />
+          {/* Video placeholder - add src when demo video is available */}
           {fallback}
         </div>
       </div>

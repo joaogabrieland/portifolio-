@@ -254,14 +254,38 @@ function ProposalDocument({ proposal, onBack, onNew }: {
       const dbStr = localStorage.getItem('mock_database_proposals') || '[]';
       const db = JSON.parse(dbStr);
 
-      db.push({
+      const proposalRecord = {
         id: proposalId,
         title: data.clientName || 'Proposta sem nome',
         status: 'Enviada',
         date: new Date().toISOString(),
         data: data,
-      });
+      };
+
+      db.push(proposalRecord);
       localStorage.setItem('mock_database_proposals', JSON.stringify(db));
+      localStorage.setItem(`proposal_data_${proposalId}`, JSON.stringify({
+        clientName: data.clientName,
+        objective: data.objective,
+        objectiveCustom: data.objectiveCustom,
+        videoType: data.videoType,
+        deliverables: data.deliverables,
+        shootingDays: data.shootingDays,
+        crewSize: data.crewSize,
+        crewSizeCustom: data.crewSizeCustom,
+        equipmentLevel: data.equipmentLevel,
+        equipmentTags: data.equipmentTags,
+        narration: data.narration,
+        motionGraphics: data.motionGraphics,
+        colorGrading: data.colorGrading,
+        outros: data.outros,
+        outrosDesc: data.outrosDesc,
+        revisionLimit: data.revisionLimit,
+        extraCosts: data.extraCosts,
+        serviceFee: data.serviceFee,
+        paymentTerms: data.paymentTerms,
+        deadline: data.deadline,
+      }));
 
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
@@ -555,32 +579,32 @@ function ProposalDocument({ proposal, onBack, onNew }: {
               </div>
 
               {/* ── Action buttons ── */}
-              <div className="no-print flex flex-col sm:flex-row items-center gap-4 w-full mt-6">
+              <div className="no-print grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-6">
                 <button onClick={handleCopy}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border h-12 ${
+                  className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border ${
                     copied
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                       : 'bg-zinc-900 text-zinc-300 hover:text-white border-zinc-700 hover:border-zinc-600'
                   }`}>
                   {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar Resumo para WhatsApp'}</span>
-                  <span className="sm:hidden">{copied ? 'Copiado!' : 'WhatsApp'}</span>
+                  <span className="hidden sm:inline whitespace-nowrap">{copied ? 'Copiado!' : 'Resumo via WhatsApp'}</span>
+                  <span className="sm:hidden whitespace-nowrap">{copied ? 'Copiado!' : 'WhatsApp'}</span>
                 </button>
                 <button onClick={handleCopyLink}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border h-12 ${
+                  className={`w-full h-12 flex items-center justify-center gap-2 rounded-xl text-sm font-bold transition-all border ${
                     linkCopied
                       ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
                       : 'bg-zinc-900 text-zinc-300 hover:text-white border-zinc-700 hover:border-zinc-600'
                   }`}>
                   {linkCopied ? <CheckCircle className="w-4 h-4" /> : <Link className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{linkCopied ? 'Link Copiado!' : 'Copiar Link'}</span>
-                  <span className="sm:hidden">{linkCopied ? 'Link!' : 'Link'}</span>
+                  <span className="hidden sm:inline whitespace-nowrap">{linkCopied ? 'Link Copiado!' : 'Copiar Link'}</span>
+                  <span className="sm:hidden whitespace-nowrap">{linkCopied ? 'Link!' : 'Link'}</span>
                 </button>
                 <button onClick={() => window.print()}
-                  className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors h-12">
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
                   <Printer className="w-4 h-4" />
-                  <span className="hidden sm:inline">Salvar como PDF</span>
-                  <span className="sm:hidden">PDF</span>
+                  <span className="hidden sm:inline whitespace-nowrap">Salvar como PDF</span>
+                  <span className="sm:hidden whitespace-nowrap">PDF</span>
                 </button>
               </div>
 
@@ -595,11 +619,13 @@ function ProposalDocument({ proposal, onBack, onNew }: {
 
 // ─── ProposalItem Component ───────────────────────────────────────────────
 
-function ProposalItem({ proposal, onView }: {
+function ProposalItem({ proposal, onView, onDelete }: {
   proposal: SavedProposal;
   onView: (p: SavedProposal) => void;
+  onDelete: (id: string) => void;
 }) {
   const [status, setStatus] = useState('Enviada');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const updateStatus = () => {
@@ -622,6 +648,11 @@ function ProposalItem({ proposal, onView }: {
     return () => window.removeEventListener('storage', updateStatus);
   }, [proposal.id]);
 
+  const handleDelete = () => {
+    onDelete(proposal.id);
+    setShowConfirm(false);
+  };
+
   const extras = proposal.data.extraCosts.filter(c => c.item.trim());
   const total = totalExtras(extras) + (parseFloat(proposal.data.serviceFee.replace(',', '.')) || 0);
 
@@ -632,47 +663,81 @@ function ProposalItem({ proposal, onView }: {
     : 'bg-zinc-700/30 text-zinc-400 border-zinc-600/50';
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-2xl transition-colors group">
-      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-        <Building2 className="w-5 h-5 text-indigo-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-black text-white truncate">{proposal.data.clientName || 'Cliente sem nome'}</p>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 border ${statusColor}`}>
-            {status}
-          </span>
+    <>
+      <div className="flex items-center gap-4 px-5 py-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-2xl transition-colors group">
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+          <Building2 className="w-5 h-5 text-indigo-400" />
         </div>
-        <div className="flex items-center gap-3 mt-0.5">
-          <span className="text-xs text-zinc-500 flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatDate(proposal.createdAt)}
-          </span>
-          <span className="text-xs text-zinc-600">·</span>
-          <span className="text-xs text-zinc-500">{proposal.data.videoType || '—'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-sm font-black text-white truncate">{proposal.data.clientName || 'Cliente sem nome'}</p>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 border ${statusColor}`}>
+              {status}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-xs text-zinc-500 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDate(proposal.createdAt)}
+            </span>
+            <span className="text-xs text-zinc-600">·</span>
+            <span className="text-xs text-zinc-500">{proposal.data.videoType || '—'}</span>
+          </div>
         </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-sm font-black text-white tabular-nums">
+            {total > 0 ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+          </p>
+          <p className="text-[10px] text-zinc-600">investimento</p>
+        </div>
+        <button onClick={() => onView(proposal)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 group-hover:bg-zinc-700 text-zinc-400 group-hover:text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
+          Ver
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button onClick={() => setShowConfirm(true)}
+          className="flex items-center justify-center w-10 h-10 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0">
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
-      <div className="text-right flex-shrink-0">
-        <p className="text-sm font-black text-white tabular-nums">
-          {total > 0 ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-        </p>
-        <p className="text-[10px] text-zinc-600">investimento</p>
-      </div>
-      <button onClick={() => onView(proposal)}
-        className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 group-hover:bg-zinc-700 text-zinc-400 group-hover:text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
-        Ver
-        <ChevronRight className="w-3.5 h-3.5" />
-      </button>
-    </div>
+
+      {/* Modal de confirmação */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-black text-white mb-2">Deletar proposta?</h3>
+            <p className="text-sm text-zinc-400 mb-6">
+              Você tem certeza que deseja deletar a proposta de <span className="text-white font-semibold">{proposal.data.clientName || 'Cliente sem nome'}</span>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Deletar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 // ─── View: History ────────────────────────────────────────────────────────────
 
-function ProposalHistory({ proposals, onNew, onView, onBack }: {
+function ProposalHistory({ proposals, onNew, onView, onDelete, onBack }: {
   proposals: SavedProposal[];
   onNew: () => void;
   onView: (p: SavedProposal) => void;
+  onDelete: (id: string) => void;
   onBack: () => void;
 }) {
   return (
@@ -716,7 +781,7 @@ function ProposalHistory({ proposals, onNew, onView, onBack }: {
         ) : (
           <div className="space-y-3">
             {[...proposals].reverse().map(p => (
-              <ProposalItem key={p.id} proposal={p} onView={onView} />
+              <ProposalItem key={p.id} proposal={p} onView={onView} onDelete={onDelete} />
             ))}
           </div>
         )}
@@ -847,6 +912,14 @@ export default function ProposalWizard({ onBack }: Props) {
     setView('wizard');
   }
 
+  function deleteProposal(id: string) {
+    const updated = proposals.filter(p => p.id !== id);
+    setProposals(updated);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(updated));
+    } catch { /* ignore */ }
+  }
+
   // ── View: History ──
   if (view === 'history') {
     return (
@@ -854,6 +927,7 @@ export default function ProposalWizard({ onBack }: Props) {
         proposals={proposals}
         onNew={startNew}
         onView={p => { setActive(p); setView('document'); }}
+        onDelete={deleteProposal}
         onBack={onBack}
       />
     );

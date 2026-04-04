@@ -1,7 +1,9 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { Check, AlertCircle, MessageSquare, Film, Target, Sparkles } from 'lucide-react';
+import { Check, AlertCircle, MessageSquare, Film, Target, Sparkles, Eye } from 'lucide-react';
+import { PDFDownloadButton } from '@/components/PDFDownloadButton';
+import { PrintPreviewModal } from '@/components/PrintPreviewModal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -14,6 +16,8 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
   const [showAlteracoes, setShowAlteracoes] = useState(false);
   const [alteracoes, setAlteracoes] = useState('');
   const [submitType, setSubmitType] = useState<'approval' | 'changes' | null>(null);
+  const [proposalData, setProposalData] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     // Evitar hydration mismatch - apenas aceder a localStorage no client
@@ -23,33 +27,79 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
       setApproved(true);
       setSubmitType(savedStatus as 'approval' | 'changes');
     }
+
+    const savedData = localStorage.getItem(`proposal_data_${proposalId}`);
+    if (savedData) {
+      try {
+        setProposalData(JSON.parse(savedData));
+      } catch (e) {
+        console.error('Erro ao carregar dados da proposta:', e);
+      }
+    }
   }, [proposalId]);
 
-  // Mock data — simula dados que viriam da BD
-  const mockProposal = {
-    id: proposalId,
-    agencyName: 'Creator Flow Produções',
-    clientName: 'Cliente Demo',
-    projectTitle: 'Campanha de Verão 2026',
-    objective: 'Branding / Awareness',
-    deliverables: '3 vídeos de 60s para Instagram Reels, 1 vídeo institucional de 2 minutos',
-    shootingDays: '3 dias',
-    crewSize: 'Equipa média (4-6 pessoas)',
-    equipment: 'Cinema camera, kit de luzes profissional, steadicam',
-    postProduction: ['Edição avançada', 'Color grading', 'Motion graphics', 'Efeitos especiais'],
-    revisions: '2 rodadas de revisão incluídas',
-    extraCosts: [
-      { item: 'Drone footage (1 dia)', value: 'R$ 1.500,00' },
-      { item: 'Actor/Talent principal (3 dias)', value: 'R$ 2.000,00' },
-    ],
-    subtotal: 'R$ 12.000,00',
-    serviceFee: 'R$ 2.400,00',
-    total: 'R$ 14.400,00',
-    paymentTerms: '50% na assinatura + 50% na entrega',
-    timeline: '45 dias',
-    startDate: '2026-04-15',
-    endDate: '2026-05-30',
+  const buildProposalDisplay = () => {
+    if (!proposalData) {
+      return {
+        id: proposalId,
+        agencyName: 'Creator Flow Produções',
+        clientName: 'Cliente Demo',
+        projectTitle: 'Campanha de Verão 2026',
+        objective: 'Branding / Awareness',
+        deliverables: '3 vídeos de 60s para Instagram Reels, 1 vídeo institucional de 2 minutos',
+        shootingDays: '3 dias',
+        crewSize: 'Equipa média (4-6 pessoas)',
+        equipment: 'Cinema camera, kit de luzes profissional, steadicam',
+        postProduction: ['Edição avançada', 'Color grading', 'Motion graphics', 'Efeitos especiais'],
+        revisions: '2 rodadas de revisão incluídas',
+        extraCosts: [
+          { item: 'Drone footage (1 dia)', value: 'R$ 1.500,00' },
+          { item: 'Actor/Talent principal (3 dias)', value: 'R$ 2.000,00' },
+        ],
+        subtotal: 'R$ 12.000,00',
+        serviceFee: 'R$ 2.400,00',
+        total: 'R$ 14.400,00',
+        paymentTerms: '50% na assinatura + 50% na entrega',
+        timeline: '45 dias',
+        startDate: '2026-04-15',
+        endDate: '2026-05-30',
+      };
+    }
+
+    const extraCosts = proposalData.extraCosts?.filter((c: any) => c.item.trim()) || [];
+    const extrasTotal = extraCosts.reduce((sum: number, c: any) => sum + (parseFloat(c.value.replace(/[^\d.-]/g, '')) || 0), 0);
+    const feeNum = parseFloat(proposalData.serviceFee?.replace(/[^\d.-]/g, '') || '0') || 0;
+    const grandTotal = extrasTotal + feeNum;
+
+    return {
+      id: proposalId,
+      agencyName: 'Creator Flow Produções',
+      clientName: proposalData.clientName || 'Cliente sem nome',
+      projectTitle: proposalData.videoType ? `${proposalData.videoType} - ${proposalData.clientName}` : 'Proposta Comercial',
+      objective: proposalData.objective === 'outro' ? proposalData.objectiveCustom : proposalData.objective,
+      deliverables: proposalData.deliverables || 'Conforme especificado',
+      shootingDays: proposalData.shootingDays ? `${proposalData.shootingDays} dia(s)` : 'A definir',
+      crewSize: proposalData.crewSize === 'outro' ? proposalData.crewSizeCustom : proposalData.crewSize,
+      equipment: proposalData.equipmentTags?.join(', ') || 'Equipamento padrão',
+      postProduction: [
+        proposalData.narration && 'Locução',
+        proposalData.motionGraphics && 'Motion Graphics',
+        proposalData.colorGrading && 'Color Grading',
+        proposalData.outros && proposalData.outrosDesc,
+      ].filter(Boolean),
+      revisions: `${proposalData.revisionLimit} rodadas de revisão incluídas`,
+      extraCosts: extraCosts,
+      subtotal: feeNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      serviceFee: feeNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      total: grandTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      paymentTerms: proposalData.paymentTerms || 'A combinar',
+      timeline: proposalData.deadline || '45 dias',
+      startDate: new Date().toLocaleDateString('pt-BR'),
+      endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
+    };
   };
+
+  const proposal = buildProposalDisplay();
 
   const handleApprove = () => {
     try {
@@ -98,8 +148,8 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
       {/* Header */}
       <div className="max-w-4xl mx-auto mb-12 text-center">
         <p className="text-xs tracking-widest uppercase text-white/40 mb-3">Proposta Comercial</p>
-        <h1 className="text-5xl font-extrabold tracking-tight mb-3">{mockProposal.projectTitle}</h1>
-        <p className="text-base text-white/60 mb-2">{mockProposal.agencyName}</p>
+        <h1 className="text-5xl font-extrabold tracking-tight mb-3">{proposal.projectTitle}</h1>
+        <p className="text-base text-white/60 mb-2">{proposal.agencyName}</p>
         <p className="text-sm text-white/40">ID: {proposalId}</p>
       </div>
 
@@ -120,8 +170,26 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
         </div>
       )}
 
+      {/* PDF Export Controls */}
+      <div className="max-w-4xl mx-auto mb-8 flex gap-3 items-center justify-center">
+        <button
+          onClick={() => setShowPreview(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-3 text-sm font-bold text-white hover:from-slate-600 hover:to-slate-700 transition-all duration-200 shadow-lg shadow-slate-900/30"
+        >
+          <Eye className="w-4 h-4" />
+          Pré-visualizar PDF
+        </button>
+        <PDFDownloadButton
+          proposalId={proposalId}
+          projectTitle={proposal.projectTitle}
+        />
+      </div>
+
       {/* Main proposal */}
-      <div className="max-w-4xl mx-auto space-y-6 print:h-auto print:overflow-visible print:block">
+      <div
+        id="proposal-content"
+        className="max-w-4xl mx-auto space-y-6 print:h-auto print:overflow-visible print:block"
+      >
         {/* ── Escopo do Projeto ── */}
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden print:block print:break-inside-avoid print:mb-8">
           <div className="border-b border-zinc-800 bg-zinc-800/50 px-6 py-4">
@@ -132,20 +200,20 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
           <div className="px-6 py-6 space-y-4">
             <div>
               <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Objetivo</p>
-              <p className="text-base text-white/90">{mockProposal.objective}</p>
+              <p className="text-base text-white/90">{proposal.objective}</p>
             </div>
             <div>
               <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Entregáveis</p>
-              <p className="text-base text-white/90">{mockProposal.deliverables}</p>
+              <p className="text-base text-white/90">{proposal.deliverables}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Dias de Gravação</p>
-                <p className="text-base text-white/90">{mockProposal.shootingDays}</p>
+                <p className="text-base text-white/90">{proposal.shootingDays}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Tamanho da Equipa</p>
-                <p className="text-base text-white/90">{mockProposal.crewSize}</p>
+                <p className="text-base text-white/90">{proposal.crewSize}</p>
               </div>
             </div>
           </div>
@@ -161,11 +229,11 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
           <div className="px-6 py-6 space-y-4">
             <div>
               <p className="text-xs text-zinc-400 uppercase font-semibold mb-2">Equipamento</p>
-              <p className="text-base text-white/90">{mockProposal.equipment}</p>
+              <p className="text-base text-white/90">{proposal.equipment}</p>
             </div>
             <div>
               <p className="text-xs text-zinc-400 uppercase font-semibold mb-2">Rodadas de Revisão</p>
-              <p className="text-base text-white/90">{mockProposal.revisions}</p>
+              <p className="text-base text-white/90">{proposal.revisions}</p>
             </div>
           </div>
         </div>
@@ -179,7 +247,7 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
           </div>
           <div className="px-6 py-6">
             <div className="space-y-2">
-              {mockProposal.postProduction.map((item, idx) => (
+              {proposal.postProduction.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3 text-white/80">
                   <div className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />
                   <p>{item}</p>
@@ -190,13 +258,13 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
         </div>
 
         {/* ── Custos Extras ── */}
-        {mockProposal.extraCosts.length > 0 && (
+        {proposal.extraCosts.length > 0 && (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden print:block print:break-inside-avoid print:mb-8">
             <div className="border-b border-zinc-800 bg-zinc-800/50 px-6 py-4">
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Custos Extras</p>
             </div>
             <div className="px-6 py-6 space-y-3">
-              {mockProposal.extraCosts.map((cost, idx) => (
+              {proposal.extraCosts.map((cost, idx) => (
                 <div key={idx} className="flex items-center justify-between text-white/90">
                   <p className="text-base">{cost.item}</p>
                   <p className="font-semibold">{cost.value}</p>
@@ -215,20 +283,20 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Início</p>
-                <p className="text-base text-white/90">{new Date(mockProposal.startDate).toLocaleDateString('pt-BR')}</p>
+                <p className="text-base text-white/90">{proposal.startDate}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Conclusão</p>
-                <p className="text-base text-white/90">{new Date(mockProposal.endDate).toLocaleDateString('pt-BR')}</p>
+                <p className="text-base text-white/90">{proposal.endDate}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Total</p>
-                <p className="text-base text-white/90">{mockProposal.timeline}</p>
+                <p className="text-base text-white/90">{proposal.timeline}</p>
               </div>
             </div>
             <div>
               <p className="text-xs text-zinc-400 uppercase font-semibold mb-1">Forma de Pagamento</p>
-              <p className="text-base text-white/90">{mockProposal.paymentTerms}</p>
+              <p className="text-base text-white/90">{proposal.paymentTerms}</p>
             </div>
           </div>
         </div>
@@ -238,16 +306,16 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
           <div className="px-8 py-12 text-center space-y-6">
             <div>
               <p className="text-white/80 text-sm uppercase font-semibold mb-2">Investimento</p>
-              <p className="text-5xl font-extrabold text-white tracking-tight">{mockProposal.total}</p>
+              <p className="text-5xl font-extrabold text-white tracking-tight">{proposal.total}</p>
             </div>
             <div className="border-t border-white/20 pt-6 space-y-2 text-sm text-white/80">
               <div className="flex justify-between">
                 <span>Subtotal (produção e pós)</span>
-                <span>{mockProposal.subtotal}</span>
+                <span>{proposal.subtotal}</span>
               </div>
               <div className="flex justify-between">
                 <span>Taxa de serviço</span>
-                <span>{mockProposal.serviceFee}</span>
+                <span>{proposal.serviceFee}</span>
               </div>
             </div>
           </div>
@@ -319,6 +387,13 @@ export default function PropostaPaginaPublica({ params }: PageProps) {
           <p>Dúvidas? Entre em contacto connosco ou aguarde o contacto direto da nossa equipa.</p>
         </div>
       </div>
+
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        elementId="proposal-content"
+      />
     </div>
   );
 }

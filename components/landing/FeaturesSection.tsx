@@ -178,11 +178,7 @@ export default function FeaturesSection() {
 
             {/* Media block */}
             <div className="relative flex-1 min-h-[280px] md:min-h-0 border-t md:border-t-0 md:border-l border-white/[0.05] bg-[#0d0e15]">
-              <video
-                autoPlay loop muted playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-                src=""
-              />
+              {/* Video placeholder - add src when demo video is available */}
               {/* Fallback: executive dashboard */}
               <div className="absolute inset-0 grid grid-cols-3 gap-3 p-6">
 

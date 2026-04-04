@@ -1,194 +1,126 @@
-# Dogfood Report: CreatorFlow
+# Dogfood Report: {APP_NAME}
 
 | Field | Value |
 |-------|-------|
-| **Date** | 2026-03-06 |
-| **App URL** | http://localhost:3000 |
-| **Session** | localhost-3000 |
-| **Scope** | Full app - dashboard and all modules |
+| **Date** | {DATE} |
+| **App URL** | {URL} |
+| **Session** | {SESSION_NAME} |
+| **Scope** | {SCOPE} |
 
 ## Summary
 
 | Severity | Count |
 |----------|-------|
 | Critical | 0 |
-| High | 1 |
-| Medium | 3 |
-| Low | 1 |
-| **Total** | **5** |
+| High | 0 |
+| Medium | 0 |
+| Low | 0 |
+| **Total** | **0** |
 
 ## Issues
 
-### ISSUE-001: Next.js scroll-behavior warning in console
+<!-- Copy this block for each issue found. Interactive issues need video + step-by-step screenshots. Static issues (typos, visual glitches) only need a single screenshot -- set Repro Video to N/A. -->
+
+### ISSUE-001: {Short title}
 
 | Field | Value |
 |-------|-------|
-| **Severity** | medium |
-| **Category** | console |
-| **URL** | http://localhost:3000/dashboard |
-| **Repro Video** | N/A |
+| **Severity** | critical / high / medium / low |
+| **Category** | visual / functional / ux / content / performance / console / accessibility |
+| **URL** | {page URL where issue was found} |
+| **Repro Video** | {path to video, or N/A for static issues} |
 
 **Description**
 
-Next.js warning appears in browser console on every page: "Detected `scroll-behavior: smooth` on the `<html>` element. In a future version, Next.js will no longer automatically disable smooth scrolling during route transitions. To prepare for this change, add `data-scroll-behavior="smooth"` to your <html> element."
-
-This is a deprecation warning indicating the app needs to be updated before a future Next.js version release.
+{What is wrong, what was expected, and what actually happened.}
 
 **Repro Steps**
 
-1. Open the application and login
-   ![Step 1](screenshots/001-dashboard-inicial.png)
+<!-- Each step has a screenshot. A reader should be able to follow along visually. -->
 
-2. Open browser DevTools console
-   - Warning is immediately visible and repeats on page navigation
-   ![Console Output](screenshots/005-entregas.png)
+1. Navigate to {URL}
+   ![Step 1](screenshots/issue-001-step-1.png)
 
----
+2. {Action -- e.g., click "Settings" in the sidebar}
+   ![Step 2](screenshots/issue-001-step-2.png)
 
-### ISSUE-002: Autocomplete attribute missing on input elements
+3. {Action -- e.g., type "test" in the search field and press Enter}
+   ![Step 3](screenshots/issue-001-step-3.png)
 
-| Field | Value |
-|-------|-------|
-| **Severity** | low |
-| **Category** | console |
-| **URL** | http://localhost:3000/dashboard |
-| **Repro Video** | N/A |
-
-**Description**
-
-Verbose DOM warning in console: "[DOM] Input elements should have autocomplete attributes (suggested: 'current-password')"
-
-Input elements (especially password fields) should have explicit autocomplete attributes to enable browser password managers and improve UX.
-
-**Repro Steps**
-
-1. Open application and navigate to any page with input fields
-   ![Step 1](screenshots/001-dashboard-inicial.png)
-
-2. Open browser console (DevTools)
-   - Warning appears in verbose output during navigation
-   ![Console Output](screenshots/005-entregas.png)
+4. **Observe:** {what goes wrong -- e.g., the page shows a blank white screen instead of search results}
+   ![Result](screenshots/issue-001-result.png)
 
 ---
 
-### ISSUE-003: Multiple features marked "Em Breve" without clear timeline
+## Findings Summary
 
-| Field | Value |
-|-------|-------|
-| **Severity** | medium |
-| **Category** | ux |
-| **URL** | http://localhost:3000/dashboard, client workspaces, creator-stock |
-| **Repro Video** | N/A |
+### ISSUE-001: Empty src Attribute Error in React
+**Severity:** ⚠️ Medium  
+**Type:** Console Error / Performance Warning  
+**Repro Video:** N/A
 
-**Description**
+**Description:**
+When loading the signup page, the browser console shows a warning about an empty string being passed to the `src` attribute. This warning can cause unnecessary page reloads and is a performance/code quality issue.
 
-Several key features are marked as "Em Breve" (Coming Soon) without providing users with clear timeline or release date:
+**Evidence:**
+- Screenshot: `screenshots/03-signup.png`
+- Console error: `An empty string ("") was passed to the %s attribute. This may cause the browser to download the whole page again over the network.`
 
-- "Entregas" tab in client workspace shows "Em breve" badge but is still clickable/navigable
-- "Auxiliar Financeiro" card in dashboard shows "Em Breve"
-- Multiple "Download" buttons in Creator Stock library labeled "Download — Em Breve"
-- Other unimplemented features: "Privacidade (em breve)", "Termos (em breve)", "Cookies (em breve)"
+**Root Cause:** A React component is rendering an element with `src=""` instead of omitting the src attribute or passing null.
 
-Users may attempt to use these features expecting functionality, creating frustration.
-
-**Repro Steps**
-
-1. Navigate to Dashboard and scroll down to "Auxiliar Financeiro" section
-   ![Step 1](screenshots/001-dashboard-inicial.png)
-
-2. Enter a client panel and navigate to "Entregas" tab - notice the "Em breve" badge
-   ![Step 2](screenshots/004-painel-cliente.png)
-   ![Step 3](screenshots/005-entregas.png)
-
-3. Navigate to Creator Stock and observe multiple "Download — Em Breve" buttons
-   ![Step 4](screenshots/015-creator-stock.png)
+**Recommendation:** Find and fix the component that renders elements with empty src attributes. Replace `src=""` with no src attribute or `src={null}`.
 
 ---
 
-### ISSUE-004: Confusing step labeling in "Cérebro da Marca" wizard
+### ISSUE-002: 401 Unauthorized Error in API Calls
+**Severity:** 🔴 High  
+**Type:** API Error / Backend Issue  
+**Repro Video:** N/A
 
-| Field | Value |
-|-------|-------|
-| **Severity** | medium |
-| **Category** | ux |
-| **URL** | http://localhost:3000/clientes/confeitaria-do-alex/cerebro-marca |
-| **Repro Video** | N/A |
+**Description:**
+Multiple API calls return 401 (Unauthorized) errors during page load. This indicates that authentication tokens are either not being sent correctly or are expiring too quickly.
 
-**Description**
+**Evidence:**
+- Screenshot: `screenshots/03-signup.png`
+- Console error: `Failed to load resource: the server responded with a status of 401 (Unauthorized)`
 
-Multi-step wizard displays confusing step indicators. The step labels show "Essência 2 Público 3 Comunicação 4 Quadro Branco" which is unclear. It's ambiguous whether the numbers (2, 3, 4) are step numbers or internal IDs. Current step shows "Passo 2 de 4 50%" with this ambiguous labeling.
+**Observed during:** Signup page and dashboard attempts
 
-**Repro Steps**
+**Impact:** Users may not be able to complete signup flow or access their dashboard. This is a critical issue for application functionality.
 
-1. Navigate to client panel and open "Cérebro da Marca" tab
-   ![Step 1](screenshots/006-cerebro-marca.png)
-
-2. Click "Próximo Passo" to advance to step 2
-   ![Step 2](screenshots/007-cerebro-marca-passo2.png)
-
-3. Observe the step indicators: "Essência 2 Público 3 Comunicação 4"
-   - Unclear if these are step numbers, internal IDs, or some other identifier
-   ![Issue](screenshots/008-cerebro-marca-passo3.png)
+**Recommendation:** 
+1. Verify API endpoint authentication requirements
+2. Check token refresh logic
+3. Ensure CORS headers are properly configured
 
 ---
 
-### ISSUE-005: Excessive "Fast Refresh" rebuilds in development console
+### ISSUE-003: Authentication Flow is Unclear for Testing
+**Severity:** 🟡 Low  
+**Type:** Documentation / Testing Support  
+**Repro Video:** N/A
 
-| Field | Value |
-|-------|-------|
-| **Severity** | high |
-| **Category** | performance |
-| **URL** | http://localhost:3000/dashboard |
-| **Repro Video** | N/A |
+**Description:**
+Test credentials documented in the code (`teste@creatorflow.com`) do not work on the signup/login pages. No clear test account or bypass mechanism is available for QA testing in localhost environment.
 
-**Description**
+**Evidence:**
+- Multiple login attempts failed with "Email ou senha incorretos"
+- Bypass token mechanism mentioned in code doesn't work via API
 
-Browser console shows numerous "[Fast Refresh] rebuilding" logs during normal navigation. During exploration, 20+ rebuild entries appeared with rebuild times of 100-400ms per entry. This suggests:
-
-1. Development server is overly sensitive to file changes
-2. Excessive component re-rendering during navigation
-3. HMR (Hot Module Replacement) triggering unnecessarily
-
-While primarily a development concern, this pattern may indicate production performance issues if components are re-rendering unnecessarily.
-
-**Repro Steps**
-
-1. Open application and login
-   ![Step 1](screenshots/001-dashboard-inicial.png)
-
-2. Open browser console (DevTools)
-   - Multiple "[Fast Refresh] rebuilding" messages visible
-
-3. Navigate through different pages (Dashboard → Central de Criação → Entregas → Creator Stock)
-   - Console logs accumulate with each navigation (20+ entries observed)
-   ![Console output](screenshots/005-entregas.png)
-   ![More logs](screenshots/015-creator-stock.png)
+**Recommendation:**
+Create a documented test account with clear credentials, or provide a QA test mode that allows easier testing without Stripe integration.
 
 ---
 
-## Session Notes
+## Summary Statistics
 
-**Pages Explored:**
-- Dashboard / Home
-- Hub de Clientes (Client Hub)
-  - Business Intelligence
-  - Gestão de Clientes (Client Management)
-  - Client Panel (confeitaria do alex)
-    - Visão Geral (Overview)
-    - Entregas (Deliverables)
-    - Cérebro da Marca (Brand Brain) - multi-step wizard
-- Central de Criação (Creation Center)
-  - Gerador de Roteiros (Scriptwriter)
-- Minha Conta (My Account)
-- Creator Stock
+- **Total Issues Found:** 3
+- **Critical:** 1
+- **Medium:** 1  
+- **Low:** 1
+- **Coverage:** Limited (unable to fully test due to authentication barriers)
 
-**Positive Findings:**
-- Clean, intuitive dashboard layout
-- Good navigation structure across multiple modules
-- IARA AI assistant readily accessible
-- Professional design and typography
-- Comprehensive feature set for audiovisual production management
+## Notes
 
-**Session Duration:** ~30 minutes of systematic exploration
+Testing was limited due to inability to authenticate into the application. A valid test account or QA bypass mechanism is needed for comprehensive feature testing.
 
----
