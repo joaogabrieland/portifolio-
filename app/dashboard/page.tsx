@@ -19,7 +19,7 @@ import TutorialModal, { TutorialButton } from '@/components/TutorialModal';
 import { isAdminEmail } from '@/lib/admin-emails';
 import StudioProfileModal from '@/components/StudioProfileModal';
 import AuthGuard from '@/components/auth/AuthGuard';
-import { LayoutGrid, Sparkles, ChevronRight, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield, FilePen } from 'lucide-react';
+import { LayoutGrid, Sparkles, ChevronRight, ChevronDown, Share2, Sun, Moon, ArrowLeft, Zap, BookOpen, Lock, Bug, MessageSquare, Send, X, Gift, Copy, Check, Twitter, MessageCircle, LogOut, Archive, AlertTriangle, Clapperboard, Users, BarChart3, BarChart2, PenTool, Briefcase, Library, FolderOpen, DollarSign, Image, Youtube, Instagram, Search, Calculator, User, Trash2, Shield, FilePen, ExternalLink } from 'lucide-react';
 
 const STORAGE_KEY = 'creator_flow_history_v2';
 const PROFILES_KEY = 'creator_flow_ig_profiles';
@@ -213,6 +213,21 @@ export default function DashboardPage() {
   const [isDashboardTutorialOpen, setIsDashboardTutorialOpen] = useState(false);
   const [isCriacaoTutorialOpen,   setIsCriacaoTutorialOpen]   = useState(false);
 
+  // User dropdown menu
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isUserMenuOpen]);
+
   // Payment success toast
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
@@ -267,11 +282,13 @@ export default function DashboardPage() {
   const [userPlan, setUserPlan] = useState('');
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userRole, setUserRole] = useState<'owner' | 'member'>('owner');
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
-  // RBAC — sourced from AgencyContext (global, persisted).
-  // Default: admin (true) — so the owner never loses access before hydration.
+  // RBAC — role from /api/auth/me (server-verified).
+  // Only set after /api/auth/me responds to avoid stale localStorage races.
   const { currentUser, signOut: agencySignOut } = useAgency();
-  const isAdmin = currentUser ? currentUser.role !== 'user' : true;
+  const isOwner = userRole === 'owner';
 
   const dashboardInitRef = useRef(false);
   useEffect(() => {
@@ -281,14 +298,19 @@ export default function DashboardPage() {
     setUserPlan(plan);
     setUserName(localStorage.getItem('cf_name') || '');
     setUserEmail(localStorage.getItem('cf_email') || '');
+    // Read cached role immediately so the UI doesn't flash
+    const cachedRole = localStorage.getItem('cf_role');
+    setUserRole(cachedRole === 'member' ? 'member' : 'owner');
     const token = localStorage.getItem('cf_token');
     if (token) {
+      // AuthGuard already fetches /api/auth/me and writes fresh data to localStorage
+      // BEFORE this component mounts (AuthGuard blocks rendering until checked=true).
+      // No need to call /api/auth/me again — just read the already-fresh localStorage values.
+      setRoleLoaded(true);
       fetch('/api/usage', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.ok ? res.json() : null)
         .then(data => { if (data) setUsageData(data); })
         .catch(() => { /* ignore */ });
-      // User data (email, name, plan) is already fetched by AuthGuard via /api/auth/me
-      // and stored in localStorage. No duplicate call needed here — just read from storage above.
 
       // Fetch portal token for the share button (client portal link)
       fetch('/api/team/invite', { headers: { Authorization: `Bearer ${token}` } })
@@ -300,6 +322,8 @@ export default function DashboardPage() {
           }
         })
         .catch(() => { /* ignore */ });
+    } else {
+      setRoleLoaded(true);
     }
   }, []);
 
@@ -785,6 +809,17 @@ export default function DashboardPage() {
       setActiveAgentId(id);
   }
 
+  // Wait for /api/auth/me so role-gated sections render correctly from the start
+  if (!roleLoaded) {
+    return (
+      <AuthGuard>
+        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
+        </div>
+      </AuthGuard>
+    );
+  }
+
   return (
     <AuthGuard>
     <div className="min-h-screen w-full bg-zinc-950 font-body selection:bg-indigo-500/30 relative overflow-hidden">
@@ -978,7 +1013,7 @@ export default function DashboardPage() {
           onNavigateToArquivos={() => { setIsClientesHubOpen(false); setIsArquivosHubOpen(true); }}
           onOpenBudgetSheet={() => { setIsClientesHubOpen(false); setActiveAgentId(AgentId.BUDGET_SHEET); }}
           onLinkCopied={() => { setShowLinkCopied(true); setTimeout(() => setShowLinkCopied(false), 2500); }}
-          isAdmin={isAdmin}
+          isAdmin={isOwner}
         />
      ) : isArquivosHubOpen ? (
         <HubArquivos
@@ -1033,30 +1068,13 @@ export default function DashboardPage() {
 
           {/* ── Header ── */}
           <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/20 backdrop-blur-md">
-            {/* Left: logo + avatar + name */}
+            {/* Left: logo only */}
+            <a href="/dashboard" className="cursor-pointer transition-opacity hover:opacity-80">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
+            </a>
+            {/* Right: admin + meu estúdio + avatar dropdown */}
             <div className="flex items-center gap-3">
-              <a href="/dashboard" className="cursor-pointer transition-opacity hover:opacity-80">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="Creator Flow" className="h-8 md:h-10 w-auto object-contain drop-shadow-md" />
-              </a>
-              {currentUser?.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={currentUser.avatar}
-                  alt="Avatar"
-                  className="w-9 h-9 rounded-full object-cover border border-gray-600 flex-shrink-0"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-gray-200 select-none">
-                    {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
-                  </span>
-                </div>
-              )}
-              <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
-            </div>
-            {/* Right: actions */}
-            <div className="flex items-center gap-2">
               {userEmail && isAdminEmail(userEmail) && (
                 <button
                   onClick={() => router.push('/admin')}
@@ -1073,28 +1091,109 @@ export default function DashboardPage() {
                 <Clapperboard className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Meu Estúdio</span>
               </button>
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-300 text-xs font-bold hover:bg-white/10 transition-all"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Compartilhar</span>
-              </button>
-              <button
-                onClick={() => setIsReferralModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-900/50 bg-amber-900/10 text-amber-400 text-xs font-bold hover:bg-amber-900/20 transition-all"
-              >
-                <Gift className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Indique e Ganhe</span>
-              </button>
-              <TutorialButton onClick={() => setIsDashboardTutorialOpen(true)} />
-              <button
-                onClick={() => { agencySignOut(); router.push('/login'); }}
-                className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-900/10 transition-all"
-                title="Sair"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              {/* User avatar dropdown */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setIsUserMenuOpen(prev => !prev)}
+                  className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                >
+                  {currentUser?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentUser.avatar}
+                      alt="Avatar"
+                      className="w-8 h-8 rounded-full object-cover border border-gray-600 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-bold text-gray-200 select-none">
+                        {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-sm font-medium text-gray-300 hidden sm:block">{userName || 'Criador'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 min-w-[260px] bg-zinc-900 border border-white/10 rounded-xl shadow-xl py-2 z-50">
+                    {/* User info header */}
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      {currentUser?.avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={currentUser.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-gray-600 flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-gray-200 select-none">
+                            {userName ? userName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'CF'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{userName || 'Criador'}</p>
+                        <p className="text-xs text-gray-400 truncate">{userEmail}</p>
+                        {userPlan && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase tracking-wider text-violet-300 bg-violet-500/15 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
+                            <Zap className="w-2.5 h-2.5" />
+                            {userPlan}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Menu items */}
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); router.push('/dashboard/profile'); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"
+                    >
+                      <User className="w-4 h-4 text-gray-400" />
+                      Meu Perfil
+                    </button>
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); setIsReferralModalOpen(true); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"
+                    >
+                      <Gift className="w-4 h-4 text-gray-400" />
+                      Indique e Ganhe
+                    </button>
+                    <a
+                      href="https://youtube.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                      Assistir Tutorial
+                    </a>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Plan info */}
+                    <div className="px-4 py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-widest text-gray-500 mb-1.5">Seu plano atual</p>
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-sm font-bold text-white">
+                          <Zap className="w-3.5 h-3.5 text-violet-400" />
+                          {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : 'Free'}
+                        </span>
+                        <button
+                          onClick={() => { setIsUserMenuOpen(false); router.push('/dashboard/pricing'); }}
+                          className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                        >
+                          Fazer upgrade →
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border-t border-white/5 my-1" />
+                    {/* Logout */}
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); agencySignOut(); router.push('/login'); }}
+                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-900/10 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 
@@ -1197,7 +1296,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setIsAssistenteExecutivoOpen(true)}
+                  onClick={() => setIsClientesHubOpen(true)}
                   className="group bg-gradient-to-b from-blue-900/20 to-transparent border border-blue-900/50 hover:border-blue-500/50 rounded-2xl p-6 flex flex-col items-start text-left transition-all duration-300 hover:bg-blue-900/10"
                 >
                   <div className="p-2.5 rounded-xl bg-blue-900/30 border border-blue-800/50 mb-4">
@@ -1238,7 +1337,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Gestão & CRM */}
+            {/* Gestão & CRM — owner only for financial tools */}
             <div className="w-full mb-12">
               <h2 className="text-xs font-bold tracking-wider text-gray-500 mb-4 uppercase">Gestão & CRM</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1254,6 +1353,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Gerencie HDs e registre ingests como Backup.</p>
                   </div>
                 </button>
+                {isOwner && (
                 <button
                   onClick={() => router.push('/dashboard/pricing')}
                   className="group bg-[#0a0a0a] border border-white/5 hover:border-violet-900/50 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300"
@@ -1266,6 +1366,8 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Calcule orçamentos e defina sua margem de lucro em poucos passos.</p>
                   </div>
                 </button>
+                )}
+                {isOwner && (
                 <div className="relative bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 flex items-start gap-4 opacity-60 pointer-events-none">
                   <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
                     <DollarSign className="w-5 h-5 text-gray-400" />
@@ -1278,6 +1380,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Controle de receitas, despesas e precificação.</p>
                   </div>
                 </div>
+                )}
                 <Link
                   href="/dashboard/gerador-contratos"
                   className="group bg-[#0a0a0a] border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300 hover:bg-purple-500/5"

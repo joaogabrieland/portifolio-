@@ -14,15 +14,15 @@ export async function GET(
       `SELECT u.name, u.email
        FROM team_invites ti
        JOIN users u ON u.id::text = ti.user_id::text
-       WHERE ti.token = $1
+       WHERE ti.token = $1 AND ti.expires_at > NOW()
        LIMIT 1`,
       [token]
     );
 
     if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Convite não encontrado ou expirado' },
-        { status: 404 }
+        { error: 'Link de convite expirado. Solicite um novo convite.' },
+        { status: 401 }
       );
     }
 
@@ -44,20 +44,20 @@ export async function POST(
   try {
     const { token } = await params;
 
-    // Validate invite token and get the inviting user
+    // Validate invite token and get the inviting user (check expiration)
     const inviteResult = await query(
       `SELECT ti.user_id, u.email as producer_email
        FROM team_invites ti
        JOIN users u ON u.id::text = ti.user_id::text
-       WHERE ti.token = $1
+       WHERE ti.token = $1 AND ti.expires_at > NOW()
        LIMIT 1`,
       [token]
     );
 
     if (inviteResult.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Convite não encontrado ou expirado' },
-        { status: 404 }
+        { error: 'Link de convite expirado. Solicite um novo convite.' },
+        { status: 401 }
       );
     }
 
@@ -79,8 +79,8 @@ export async function POST(
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 });
     }
-    if (!password || password.length < 6) {
-      return NextResponse.json({ error: 'A senha deve ter pelo menos 6 caracteres' }, { status: 400 });
+    if (!password || password.length < 8) {
+      return NextResponse.json({ error: 'A senha deve ter pelo menos 8 caracteres' }, { status: 400 });
     }
 
     // Generate a team member email based on the invite token
@@ -104,9 +104,9 @@ export async function POST(
     const passwordHash = await bcrypt.hash(password, 12);
 
     const userResult = await query(
-      `INSERT INTO users (name, email, password_hash)
-       VALUES ($1, $2, $3) RETURNING id`,
-      [name.trim(), memberEmail, passwordHash]
+      `INSERT INTO users (name, email, password_hash, role, owner_id)
+       VALUES ($1, $2, $3, 'member', $4) RETURNING id`,
+      [name.trim(), memberEmail, passwordHash, invite.user_id]
     );
 
     const userId = userResult.rows[0].id;
@@ -141,7 +141,7 @@ export async function POST(
     );
 
     // Generate JWT
-    const jwtToken = signToken({ userId: userId.toString(), email: memberEmail }, '30d');
+    const jwtToken = signToken({ userId: userId.toString(), email: memberEmail, role: 'member' }, '30d');
 
     return NextResponse.json({
       token: jwtToken,

@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     });
 
     const userResult = await query(
-      `INSERT INTO users (name, email, password_hash, stripe_customer_id)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
+      `INSERT INTO users (name, email, password_hash, stripe_customer_id, role)
+       VALUES ($1, $2, $3, $4, 'owner') RETURNING id`,
       [name, email.toLowerCase(), passwordHash, customer.id]
     );
     const userId = userResult.rows[0].id;
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       customer: customer.id,
       line_items: [{ price: planData.priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/login?registered=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/signup?plan=${plan}&canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://creatorflowia.com'}/login?registered=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://creatorflowia.com'}/signup?plan=${plan}&canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       locale: 'pt-BR',

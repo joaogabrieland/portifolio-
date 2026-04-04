@@ -46,9 +46,9 @@ export async function POST(req: NextRequest) {
         );
 
         if (result.rowCount === 0) {
-          console.error('Webhook: no subscription found for customer:', customerId);
+          console.error('Webhook: no subscription found for customer');
         } else {
-          console.warn('Checkout completed — subscription activated for customer:', customerId);
+          console.warn('Checkout completed — subscription activated');
         }
         break;
       }

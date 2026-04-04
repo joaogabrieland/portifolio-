@@ -7,7 +7,7 @@ services:
     env_file:
       - .env.production
     environment:
-      - NEXT_PUBLIC_ADMIN_EMAIL=${ADMIN_EMAIL:-marcosvlogs12@gmail.com}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
     security_opt:
       - no-new-privileges:true
     read_only: true

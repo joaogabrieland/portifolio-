@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
+import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/auth-helpers';
 
 // PUT /api/clients/:clientId — Update client profile
 export async function PUT(
@@ -13,6 +13,7 @@ export async function PUT(
   const { clientId } = await params;
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
     const body = await req.json();
     const { brandName, niche, subniche, idealClient, mainPains, mainDesires, voiceTone, visualStyle, defaultCta } = body;
 
@@ -32,7 +33,7 @@ export async function PUT(
        RETURNING id, brand_name, niche, subniche, ideal_client, main_pains, main_desires, voice_tone, visual_style, default_cta, created_at`,
       [
         clientId,
-        auth.userId,
+        effectiveUserId,
         brandName ?? null,
         niche ?? null,
         subniche ?? null,
@@ -66,9 +67,8 @@ export async function PUT(
 
     return NextResponse.json({ client });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] PUT /api/clients/${clientId} FALHOU:`, detail, error);
-    return NextResponse.json({ error: `Erro ao atualizar cliente: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] PUT /api/clients/${clientId} FALHOU:`, error);
+    return NextResponse.json({ error: 'Erro ao atualizar cliente' }, { status: 500 });
   }
 }
 
@@ -83,9 +83,10 @@ export async function DELETE(
   const { clientId } = await params;
 
   try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
     const result = await query(
       'DELETE FROM clients WHERE id = $1 AND user_id = $2',
-      [clientId, auth.userId]
+      [clientId, effectiveUserId]
     );
 
     if (result.rowCount === 0) {
@@ -94,8 +95,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    console.error(`[AUDITORIA HUB] DELETE /api/clients/${clientId} FALHOU:`, detail, error);
-    return NextResponse.json({ error: `Erro ao excluir cliente: ${detail}` }, { status: 500 });
+    console.error(`[AUDITORIA HUB] DELETE /api/clients/${clientId} FALHOU:`, error);
+    return NextResponse.json({ error: 'Erro ao excluir cliente' }, { status: 500 });
   }
 }

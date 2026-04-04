@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const { priceId, customerEmail } = await req.json();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://creatorflowia.com';
 
     if (!priceId || typeof priceId !== 'string') {
       return NextResponse.json({ error: 'Invalid price ID' }, { status: 400 });
@@ -26,8 +27,8 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#pricing`,
+      success_url: `${appUrl}/dashboard?checkout=success`,
+      cancel_url: `${appUrl}/#pricing`,
       allow_promotion_codes: true,
       billing_address_collection: 'required',
       locale: 'pt-BR',

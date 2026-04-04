@@ -16,26 +16,33 @@ export async function GET(req: NextRequest) {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
 
-    // Ensure table exists
+    // Ensure table exists with expiration and access tracking columns
     await query(`
       CREATE TABLE IF NOT EXISTS team_invites (
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
         token TEXT UNIQUE NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+        last_accessed_at TIMESTAMPTZ
       )
     `);
+    // Add columns if table already exists without them
+    await query(`ALTER TABLE team_invites ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days')`);
+    await query(`ALTER TABLE team_invites ADD COLUMN IF NOT EXISTS last_accessed_at TIMESTAMPTZ`);
 
-    // Check if user already has an invite token
+    // Check if user already has a non-expired invite token
     const existing = await query(
-      'SELECT token FROM team_invites WHERE user_id = $1 LIMIT 1',
+      'SELECT token, expires_at FROM team_invites WHERE user_id = $1 AND expires_at > NOW() LIMIT 1',
       [decoded.userId]
     );
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://creatorflowia.com';
+
     if (existing.rows.length > 0) {
-      const origin = req.nextUrl.origin;
       return NextResponse.json({
-        inviteUrl: `${origin}/invite/${existing.rows[0].token}`,
+        inviteUrl: `${baseUrl}/invite/${existing.rows[0].token}`,
+        expiresAt: existing.rows[0].expires_at,
       });
     }
 
@@ -59,16 +66,16 @@ export async function GET(req: NextRequest) {
       }, { status: 403 });
     }
 
-    // Generate new invite token
+    // Generate new invite token with 7-day expiration
     const inviteToken = crypto.randomUUID();
-    await query(
-      'INSERT INTO team_invites (user_id, token) VALUES ($1, $2)',
+    const result = await query(
+      `INSERT INTO team_invites (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days') RETURNING expires_at`,
       [decoded.userId, inviteToken]
     );
 
-    const origin = req.nextUrl.origin;
     return NextResponse.json({
-      inviteUrl: `${origin}/invite/${inviteToken}`,
+      inviteUrl: `${baseUrl}/invite/${inviteToken}`,
+      expiresAt: result.rows[0].expires_at,
     });
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {

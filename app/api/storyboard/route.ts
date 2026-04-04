@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { GoogleGenAI } from '@google/genai';
+import { query } from '@/lib/db';
+import { PLANS, PlanKey } from '@/lib/stripe';
+import { checkLimit, incrementUsage } from '@/lib/usage';
 
 interface SceneInput {
   id: string;
@@ -15,7 +18,34 @@ export async function POST(req: NextRequest) {
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    verifyToken(authHeader.split(' ')[1]);
+    const decoded = verifyToken(authHeader.split(' ')[1]);
+    const userId = decoded.userId;
+
+    // --- Plan limit enforcement ---
+    let userPlan: PlanKey | null = null;
+    const planResult = await query(
+      `SELECT s.plan FROM subscriptions s
+       WHERE s.user_id = $1 AND s.status = 'active'
+       ORDER BY s.created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (planResult.rows.length > 0) {
+      userPlan = planResult.rows[0].plan as PlanKey;
+    }
+
+    if (userPlan) {
+      const limitCheck = await checkLimit(userId, userPlan, 'storyboard');
+      if (!limitCheck.allowed) {
+        return NextResponse.json({
+          error: 'Limite do plano atingido',
+          message: `Você atingiu o limite de ${limitCheck.limit.toLocaleString('pt-BR')} storyboards/mês do seu plano. Faça upgrade para continuar.`,
+          feature: 'storyboard',
+          used: limitCheck.used,
+          limit: limitCheck.limit,
+          upgradeUrl: '/#precos',
+        }, { status: 429 });
+      }
+    }
 
     const { scenes, scriptTitle } = await req.json() as { scenes: SceneInput[]; scriptTitle: string };
     if (!Array.isArray(scenes) || scenes.length === 0) {
@@ -118,12 +148,20 @@ IDs: ${scenesToProcess.map(s => s.id).join(', ')}`;
     });
 
     const storyboards = await Promise.all(storyboardPromises);
+
+    // Track usage after successful generation
+    if (userPlan) {
+      await incrementUsage(userId, 'storyboard').catch(err =>
+        console.error('Failed to increment storyboard usage:', err)
+      );
+    }
+
     return NextResponse.json({ storyboards });
   } catch (error) {
     if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
     console.error('Storyboard API error:', error);
-    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const decoded = verifyToken(token);
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.stripe_customer_id,
+      `SELECT u.id, u.name, u.email, u.role, u.stripe_customer_id,
               s.plan, s.status as subscription_status, s.current_period_end, s.cancel_at_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role || 'owner',
         plan: user.plan,
         subscriptionStatus: user.subscription_status || 'inactive',
         currentPeriodEnd: user.current_period_end,

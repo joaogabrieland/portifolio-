@@ -249,10 +249,22 @@ const UpcomingScheduleSection: React.FC<UpcomingScheduleSectionProps> = ({ clien
 // ─────────────────────────────────────────────
 interface TeamModalProps { isOpen: boolean; onClose: () => void; }
 
-const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
-  // ── Global agency state (real members list) ──────────────────────────────
-  const { teamMembers: agencyMembers, removeMember, updateMemberRole } = useAgency();
+interface ApiTeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  cargo: string;
+  isOwner: boolean;
+  avatar?: string;
+  joinedAt: number;
+}
 
+const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
+  const { updateMemberRole } = useAgency();
+
+  const [members, setMembers]               = useState<ApiTeamMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [inviteUrl, setInviteUrl]           = useState('');
   const [inviteLoading, setInviteLoading]   = useState(false);
   const [showInviteLink, setShowInviteLink] = useState(false);
@@ -261,18 +273,32 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
   const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
   const [editingId, setEditingId]           = useState<string | null>(null);
 
+  // Fetch members from API when modal opens
+  const membersFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen || membersFetchedRef.current) return;
+    membersFetchedRef.current = true;
+    setMembersLoading(true);
+    const token = localStorage.getItem('cf_token');
+    if (!token) { setMembersLoading(false); return; }
+    fetch('/api/team/members', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.members) setMembers(data.members); })
+      .catch(() => {})
+      .finally(() => setMembersLoading(false));
+  }, [isOpen]);
+
+  // Reset fetch guard when modal closes so it re-fetches on next open
+  useEffect(() => {
+    if (!isOpen) membersFetchedRef.current = false;
+  }, [isOpen]);
+
   const handleGenerateInvite = async () => {
     setInviteLoading(true);
 
     const storedToken = localStorage.getItem('cf_token');
 
-    // ⚠️ UI TEST BYPASS — bypass_member tokens can't call the real API (invalid JWT).
-    // Generate a mock invite URL directly in the browser for local UI testing.
-    // Remove this early-return block when the real backend is connected.
-    if (!storedToken || storedToken.startsWith('bypass_member_')) {
-      const mockToken = crypto.randomUUID();
-      setInviteUrl(`${window.location.origin}/invite/${mockToken}`);
-      setShowInviteLink(true);
+    if (!storedToken) {
       setInviteLoading(false);
       return;
     }
@@ -304,14 +330,45 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
     setTimeout(() => setInviteToast(false), 3000);
   };
 
-  const handleRemove = (id: string) => {
-    if (confirm('Remover este membro da equipe?')) removeMember(id);
+  const handleRemove = async (id: string) => {
+    if (!confirm('Remover este membro da equipe?')) { setOpenMenuId(null); return; }
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/team/members/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setMembers(prev => prev.filter(m => m.id !== id));
+    } catch { /* ignore */ }
     setOpenMenuId(null);
   };
 
-  const handleChangeRole = (id: string, role: MemberRole) => {
-    updateMemberRole(id, role);
+  const handleChangeRole = async (id: string, role: MemberRole) => {
+    // Map MemberRole to cargo label
+    const cargoMap: Record<MemberRole, string> = {
+      admin: 'Administrador',
+      roteirista: 'Roteirista',
+      videomaker: 'Videomaker',
+      editor: 'Editor',
+      designer: 'Designer',
+    };
+    const cargo = cargoMap[role] || role;
+
+    // Optimistic update
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, cargo } : m));
+    updateMemberRole(id, role); // keep localStorage in sync
     setEditingId(null);
+
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    try {
+      await fetch(`/api/team/members/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cargo }),
+      });
+    } catch { /* ignore — optimistic update already applied */ }
   };
 
   const getInitials = (name: string) =>
@@ -399,16 +456,26 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Member list — sourced from global AgencyContext */}
+          {/* Member list — sourced from API */}
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-3">
-              Membros Ativos · {agencyMembers.length}
+              Membros Ativos · {members.length}
             </p>
 
+            {membersLoading && (
+              <div className="flex justify-center py-8">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+              </div>
+            )}
+
             <div className="space-y-2">
-              {agencyMembers.map(member => {
-                // Resolve the functional role badge (memberRole is 'roteirista' etc.; role is 'admin'|'user')
-                const badgeKey = (member.memberRole as MemberRole) || (member.isOwner ? 'admin' : 'editor');
+              {members.map(member => {
+                // Resolve cargo to MemberRole key for badge styling
+                const cargoToRole: Record<string, MemberRole> = {
+                  'Administrador': 'admin', 'Roteirista': 'roteirista',
+                  'Videomaker': 'videomaker', 'Editor': 'editor', 'Designer': 'designer',
+                };
+                const badgeKey = cargoToRole[member.cargo] || (member.isOwner ? 'admin' : 'editor');
                 const cfg = ROLE_CONFIG[badgeKey] ?? ROLE_CONFIG['editor'];
                 return (
                   <div
@@ -486,7 +553,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
                                   key={opt.value}
                                   onClick={() => handleChangeRole(member.id, opt.value)}
                                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all text-left ${
-                                    member.memberRole === opt.value
+                                    cargoToRole[member.cargo] === opt.value
                                       ? 'bg-violet-900/20 text-violet-400'
                                       : 'hover:bg-zinc-700/50 text-zinc-300'
                                   }`}
@@ -914,7 +981,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [portalClient, setPortalClient]     = useState<Client | null>(null);
-  const [hubView, setHubView]               = useState<'bi' | 'clientes'>('bi');
+  const [hubView, setHubView]               = useState<'bi' | 'clientes'>(isAdmin ? 'bi' : 'clientes');
+  // Sync hubView if isAdmin prop changes after initial mount (e.g. role loaded async)
+  const prevIsAdminRef = useRef(isAdmin);
+  useEffect(() => {
+    if (isAdmin && !prevIsAdminRef.current) setHubView('bi');
+    prevIsAdminRef.current = isAdmin;
+  }, [isAdmin]);
   const [alertsCache, setAlertsCache]       = useState<Record<string, ClientAlerts>>({});
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [portalToken, setPortalToken]       = useState('');
@@ -1037,27 +1110,21 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 Gerar Proposta
               </button>
             )}
-            {/* Admin-only: Gestão de equipe */}
-            {isAdmin && (
-              <button
-                onClick={() => setIsTeamOpen(true)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-zinc-700 bg-zinc-800/80 text-zinc-300 rounded-xl font-bold text-sm hover:border-violet-600 hover:text-violet-400 transition-all"
-              >
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Minha Equipe</span>
-              </button>
-            )}
-            {/* Admin-only: Adicionar novo cliente */}
-            {isAdmin && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Novo Cliente</span>
-                <span className="sm:hidden">Novo</span>
-              </button>
-            )}
+            <button
+              onClick={() => setIsTeamOpen(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-zinc-700 bg-zinc-800/80 text-zinc-300 rounded-xl font-bold text-sm hover:border-violet-600 hover:text-violet-400 transition-all"
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Minha Equipe</span>
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Novo Cliente</span>
+              <span className="sm:hidden">Novo</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1069,16 +1136,18 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
         <div className="border-b border-zinc-800 bg-zinc-950 px-4 sm:px-6 py-3">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 w-fit">
-              <button
-                onClick={() => setHubView('bi')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                  hubView === 'bi'
-                    ? 'bg-zinc-700 text-white shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" /> Business Intelligence
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setHubView('bi')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    hubView === 'bi'
+                      ? 'bg-zinc-700 text-white shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" /> Business Intelligence
+                </button>
+              )}
               <button
                 onClick={() => setHubView('clientes')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
@@ -1093,8 +1162,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           </div>
         </div>
 
-        {/* ── BI Dashboard ── */}
-        {hubView === 'bi' && <BIDashboard clients={clients} />}
+        {/* ── BI Dashboard (owner only) ── */}
+        {isAdmin && hubView === 'bi' && <BIDashboard clients={clients} />}
 
         {/* ── Clients view ── */}
         {hubView === 'clientes' && (
@@ -1141,16 +1210,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                         : 'border-zinc-800 hover:border-emerald-800'
                     }`}
                   >
-                    {/* Delete btn — admin only */}
-                    {isAdmin && (
-                      <button
-                        onClick={() => setClientToDelete(client)}
-                        className="absolute top-3 right-3 p-1.5 text-zinc-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                        aria-label={`Excluir ${client.brandName}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setClientToDelete(client)}
+                      className="absolute top-3 right-3 p-1.5 text-zinc-700 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      aria-label={`Excluir ${client.brandName}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
 
                     {/* Brand name + niche */}
                     <div>
@@ -1235,33 +1301,28 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 );
               })}
 
-              {/* Add card — admin only */}
-              {isAdmin && (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-zinc-800 rounded-2xl text-zinc-400 hover:border-emerald-400 hover:text-emerald-500 transition-all min-h-[180px]"
-                >
-                  <Plus className="w-6 h-6" />
-                  <span className="text-sm font-bold">Novo Cliente</span>
-                </button>
-              )}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-zinc-800 rounded-2xl text-zinc-400 hover:border-emerald-400 hover:text-emerald-500 transition-all min-h-[180px]"
+              >
+                <Plus className="w-6 h-6" />
+                <span className="text-sm font-bold">Novo Cliente</span>
+              </button>
             </div>
           )}
         </div>
         )}
       </main>
 
-      {/* ── FAB Mobile — admin only ── */}
-      {isAdmin && (
-        <div className="fixed bottom-6 right-6 sm:hidden z-40">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-emerald-500/40 hover:opacity-90 transition-all"
-          >
-            <Plus className="w-5 h-5" /> Novo
-          </button>
-        </div>
-      )}
+      {/* ── FAB Mobile ── */}
+      <div className="fixed bottom-6 right-6 sm:hidden z-40">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-sm shadow-2xl shadow-emerald-500/40 hover:opacity-90 transition-all"
+        >
+          <Plus className="w-5 h-5" /> Novo
+        </button>
+      </div>
 
       <ClientOnboardingModal
         isOpen={isModalOpen}

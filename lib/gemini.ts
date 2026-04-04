@@ -258,7 +258,7 @@ export const sendMessageToAgent = async (
       responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     }
 
-    console.log('[DEBUG IA CRU]:', responseText.slice(0, 500));
+    // Debug log removed for production
 
     if (responseText || generatedImage) {
       return { text: responseText, generatedImage };

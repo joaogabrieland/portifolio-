@@ -51,14 +51,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // ⚠️ UI TEST BYPASS — bypass_member tokens are fake and can't be validated by the API.
-    // Allow them to access the dashboard directly so RBAC UI can be tested.
-    // Remove this block when real backend auth is connected.
-    if (token.startsWith('bypass_member_')) {
-      setChecked(true);
-      return;
-    }
-
     // Fetch user data — do NOT redirect until this resolves
     fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
@@ -72,6 +64,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           router.replace('/login');
           return null;
         }
+        // Rate limited or server error — fall back to localStorage
+        if (res.status === 429 || res.status >= 500) {
+          const cachedEmail = localStorage.getItem('cf_email');
+          if (cachedEmail) {
+            setChecked(true);
+          } else {
+            router.replace('/login');
+          }
+          return null;
+        }
         return res.json();
       })
       .then((data) => {
@@ -83,8 +85,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('cf_email', email);
         localStorage.setItem('cf_name', data.user.name || '');
         localStorage.setItem('cf_plan', data.user.plan || '');
-        // Always write cf_role so stale values from invite-bypass tests are overwritten
-        localStorage.setItem('cf_role', isAdminEmail(email) ? 'admin' : 'user');
+        // Role from server (owner/member) — admin emails always get 'owner'
+        const serverRole = isAdminEmail(email) ? 'owner' : (data.user.role || 'owner');
+        localStorage.setItem('cf_role', serverRole);
 
         // Admin bypass — NEVER check subscription for admin emails
         if (isAdminEmail(email)) {
@@ -101,8 +104,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         setChecked(true);
       })
       .catch(() => {
-        // Network error — redirect to login for safety
-        router.replace('/login');
+        // Network error — fall back to localStorage if available, else login
+        const cachedEmail = localStorage.getItem('cf_email');
+        if (cachedEmail) {
+          setChecked(true);
+        } else {
+          router.replace('/login');
+        }
       });
   }, [pathname, router]);
 

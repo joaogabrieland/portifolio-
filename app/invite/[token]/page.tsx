@@ -3,14 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Users, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
-import { useAgency } from '@/components/AgencyContext';
-import type { AgencyUser } from '@/lib/agency-storage';
 
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
-  const { addTeamMember } = useAgency();
-
   const [producerName, setProducerName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -24,14 +20,17 @@ export default function InvitePage() {
   const [formError, setFormError]     = useState('');
 
   useEffect(() => {
-    // ⚠️ UI TEST BYPASS — skips token validation while backend isn't connected.
-    // Accepts any token and shows the signup form.
-    // TODO: Backend — replace with: fetch(`/api/team/invite/validate?token=${token}`)
-    //   .then(res => res.ok ? res.json() : Promise.reject())
-    //   .then(data => setProducerName(data.agencyName))
-    //   .catch(() => setError('Convite não encontrado ou expirado.'));
-    setProducerName('CreatorFlow (modo teste)');
-    setLoading(false);
+    fetch(`/api/team/invite/validate?token=${token}`)
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('invalid')))
+      .then(data => {
+        setProducerName(data.agencyName || 'CreatorFlow');
+        setInviteEmail(data.email || '');
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Convite não encontrado ou expirado.');
+        setLoading(false);
+      });
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,42 +45,44 @@ export default function InvitePage() {
       setFormError('Digite seu nome.');
       return;
     }
-    if (password.length < 6) {
-      setFormError('A senha deve ter pelo menos 6 caracteres.');
+    if (password.length < 8) {
+      setFormError('A senha deve ter pelo menos 8 caracteres.');
       return;
     }
 
     setSubmitting(true);
 
-    // TODO: Backend — Lógica de criação de Auth no Supabase/Firebase
-    // Substituir por: const { user } = await supabase.auth.signUp({
-    //   email: inviteEmail, password,
-    //   options: { data: { name: name.trim(), role: 'user', inviteToken: token } }
-    // });
-    // ou Firebase: await createUserWithEmailAndPassword(auth, inviteEmail, password)
-    //              await updateProfile(firebaseUser, { displayName: name.trim() });
+    try {
+      const res = await fetch(`/api/invite/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          password,
+        }),
+      });
 
-    // Create the new member object and register them in the global agency state.
-    const newMember: AgencyUser = {
-      id: `member_${Date.now()}`,
-      name: name.trim(),
-      email: inviteEmail.trim(),
-      role: 'user',         // invited members always start as 'user'
-      memberRole: 'editor', // default functional role; admin can change it later
-      isOwner: false,
-      joinedAt: Date.now(),
-    };
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || 'Erro ao criar conta. Tente novamente.');
+        setSubmitting(false);
+        return;
+      }
 
-    // Write a fake auth token so AuthGuard lets the new member into the dashboard.
-    // The bypass_member_ prefix signals AuthGuard to skip the /api/auth/me call.
-    localStorage.setItem('cf_token', `bypass_member_${Date.now()}`);
-    localStorage.setItem('cf_plan', '');
+      const data = await res.json();
 
-    // addTeamMember also syncs cf_email / cf_name / cf_role to localStorage
-    // and sets this user as currentUser in the global AgencyContext.
-    addTeamMember(newMember);
+      // Store the real JWT token returned by the server
+      localStorage.setItem('cf_token', data.token);
+      localStorage.setItem('cf_email', data.user?.email || inviteEmail.trim());
+      localStorage.setItem('cf_name', data.user?.name || name.trim());
+      localStorage.setItem('cf_plan', data.user?.plan || '');
+      localStorage.setItem('cf_role', 'member');
 
-    router.push('/dashboard');
+      router.push('/dashboard');
+    } catch {
+      setFormError('Erro de conexão. Tente novamente.');
+      setSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -168,7 +169,7 @@ export default function InvitePage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres"
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all placeholder:text-zinc-600"
               />
               <button
