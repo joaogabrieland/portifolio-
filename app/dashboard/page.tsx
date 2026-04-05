@@ -30,6 +30,7 @@ const HDDS_KEY = 'creator_flow_hdds';
 const RECORDINGS_KEY = 'creator_flow_recordings';
 const STUDIO_KEY = 'creator_flow_studio_profile';
 const CLIENTS_KEY = 'creator_flow_clients';
+const NAV_STATE_KEY = 'cf_active_hub';
 
 const INITIAL_STUDIO: StudioProfile = {
   name: '',
@@ -355,6 +356,50 @@ export default function DashboardPage() {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
+  // ─── Navigation State Persistence ─────────────────────────────
+  const getActiveHub = (): string | null => {
+    if (activeAgentId) return `agent_${activeAgentId}`;
+    if (isClientesHubOpen) return 'clientes';
+    if (isArquivosHubOpen) return 'arquivos';
+    if (isLightingHubOpen) return 'lighting';
+    if (isEditingHubOpen) return 'editing';
+    if (isProductionHubOpen) return 'production';
+    if (isAssistenteExecutivoOpen) return 'executivo';
+    if (isCreatorStockOpen) return 'stock';
+    return null;
+  };
+
+  const restoreNavigationState = (hubName: string): void => {
+    if (hubName.startsWith('agent_')) {
+      const agentId = hubName.substring(6) as AgentId;
+      setActiveAgentId(agentId);
+    } else if (hubName === 'clientes') {
+      setIsClientesHubOpen(true);
+    } else if (hubName === 'arquivos') {
+      setIsArquivosHubOpen(true);
+    } else if (hubName === 'lighting') {
+      setIsLightingHubOpen(true);
+    } else if (hubName === 'editing') {
+      setIsEditingHubOpen(true);
+    } else if (hubName === 'production') {
+      setIsProductionHubOpen(true);
+    } else if (hubName === 'executivo') {
+      setIsAssistenteExecutivoOpen(true);
+    } else if (hubName === 'stock') {
+      setIsCreatorStockOpen(true);
+    }
+  };
+
+  const saveNavigationState = (): void => {
+    const activeHub = getActiveHub();
+    if (activeHub === null) {
+      localStorage.removeItem(NAV_STATE_KEY);
+    } else {
+      localStorage.setItem(NAV_STATE_KEY, activeHub);
+    }
+  };
+  // ───────────────────────────────────────────────────────────────
+
   const dataLoadedRef = useRef(false);
   useEffect(() => {
     if (dataLoadedRef.current) return;
@@ -468,6 +513,19 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Navigation state restoration on page reload
+  const navRestoreRef = useRef(false);
+  useEffect(() => {
+    if (navRestoreRef.current) return;
+    navRestoreRef.current = true;
+
+    const savedHub = localStorage.getItem(NAV_STATE_KEY);
+    if (savedHub) {
+      console.log('🔄 Restoring navigation state:', savedHub);
+      restoreNavigationState(savedHub);
+    }
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
   }, [sessions]);
@@ -495,6 +553,11 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem(STUDIO_KEY, JSON.stringify(studioProfile));
   }, [studioProfile]);
+
+  // Auto-save navigation state whenever any hub state changes
+  useEffect(() => {
+    saveNavigationState();
+  }, [activeAgentId, isClientesHubOpen, isArquivosHubOpen, isLightingHubOpen, isEditingHubOpen, isProductionHubOpen, isAssistenteExecutivoOpen, isCreatorStockOpen]);
 
   // Sync clients to IaraContext so IaraDrawer can list them in multi-step flow
   // setIaraClients is a stable useState setter — intentionally omitted from deps
@@ -717,6 +780,7 @@ export default function DashboardPage() {
   };
 
   const handleBack = () => {
+      localStorage.removeItem(NAV_STATE_KEY);
       setNavigationContext(null);
       if (activeAgentId) {
           // Lighting sub-agents → Lighting Hub
