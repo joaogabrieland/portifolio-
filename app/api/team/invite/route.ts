@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
 
+    // Get role from query string (admin or member, defaults to member)
+    const url = new URL(req.url);
+    const roleParam = url.searchParams.get('role');
+    const role = roleParam === 'admin' ? 'admin' : 'member';
+
     // Ensure table exists with expiration and access tracking columns
     await query(`
       CREATE TABLE IF NOT EXISTS team_invites (
@@ -41,7 +46,7 @@ export async function GET(req: NextRequest) {
 
     if (existing.rows.length > 0) {
       return NextResponse.json({
-        inviteUrl: `${baseUrl}/invite/${existing.rows[0].token}`,
+        inviteUrl: `${baseUrl}/invite/${existing.rows[0].token}${role === 'admin' ? '?role=admin' : ''}`,
         expiresAt: existing.rows[0].expires_at,
       });
     }
@@ -74,7 +79,7 @@ export async function GET(req: NextRequest) {
     );
 
     return NextResponse.json({
-      inviteUrl: `${baseUrl}/invite/${inviteToken}`,
+      inviteUrl: `${baseUrl}/invite/${inviteToken}${role === 'admin' ? '?role=admin' : ''}`,
       expiresAt: result.rows[0].expires_at,
     });
   } catch (error) {

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id, u.role,
+      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id,
               s.plan, s.status as subscription_status, s.current_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
@@ -112,7 +112,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: 'Erro ao fazer login' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Login error:', errorMessage);
+    console.error('Full error:', error);
+    return NextResponse.json({ error: 'Erro ao fazer login', details: errorMessage }, { status: 500 });
   }
 }

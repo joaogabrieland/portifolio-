@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Film, Camera, Clapperboard, Video, Aperture } from 'lucide-react';
 
 const floatingIcons = [
@@ -37,29 +36,38 @@ export default function AuthLayout({
           }}
         />
 
+        <style>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(5deg); }
+          }
+          @keyframes float-alt {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(-5deg); }
+          }
+          .float-icon-0 { animation: float 6s ease-in-out infinite; }
+          .float-icon-1 { animation: float-alt 6s ease-in-out infinite 0.8s; }
+          .float-icon-2 { animation: float 6s ease-in-out infinite 1.6s; }
+          .float-icon-3 { animation: float-alt 6s ease-in-out infinite 2.2s; }
+          .float-icon-4 { animation: float 6s ease-in-out infinite 0.5s; }
+        `}</style>
+
         {/* Floating film icons */}
         {floatingIcons.map((item, i) => {
-          const { Icon, delay, size, ...pos } = item;
+          const { Icon, size, ...pos } = item;
           return (
-            <motion.div
+            <div
               key={i}
-              className="absolute text-[#8B5CF6]/25"
+              className={`absolute text-[#8B5CF6]/25 float-icon-${i}`}
               style={pos as React.CSSProperties}
-              animate={{ y: [0, -12, 0], rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 6, delay, repeat: Infinity, ease: 'easeInOut' }}
             >
               <Icon size={size} />
-            </motion.div>
+            </div>
           );
         })}
 
         {/* Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-12 text-center"
-        >
+        <div className="relative z-10 px-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-800">
           {/* W logo */}
           <div className="relative inline-block mb-8">
             <div className="absolute -inset-8 bg-[radial-gradient(circle,rgba(139,92,246,0.2)_0%,transparent_70%)] animate-pulse" />
@@ -74,7 +82,7 @@ export default function AuthLayout({
           <p className="text-[15px] text-zinc-300 leading-relaxed max-w-xs mx-auto">
             24 agentes de IA especializados para criadores de v&iacute;deo.
           </p>
-        </motion.div>
+        </div>
 
         {/* Sparkle decorations */}
         <div className="pointer-events-none absolute top-[20%] right-[25%] text-[#8B5CF6]/20 text-lg select-none">&#10022;</div>
@@ -83,12 +91,7 @@ export default function AuthLayout({
 
       {/* Right panel — form */}
       <div className="flex w-full lg:w-1/2 items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="w-full max-w-[420px]"
-        >
+        <div className="w-full max-w-[420px] animate-in fade-in slide-in-from-right-4 duration-600 delay-100">
           <div className="rounded-2xl border border-white/[0.08] bg-[#161616]/60 backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-black/20">
             <h1 className="font-display text-[26px] font-bold text-white mb-1.5">
               {title}
@@ -96,7 +99,7 @@ export default function AuthLayout({
             <p className="text-[15px] text-[#A0A0A0] mb-8">{subtitle}</p>
             {children}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

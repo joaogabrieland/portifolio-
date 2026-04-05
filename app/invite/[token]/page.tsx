@@ -10,6 +10,7 @@ export default function InvitePage() {
   const [producerName, setProducerName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
 
   // Signup form state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -20,6 +21,15 @@ export default function InvitePage() {
   const [formError, setFormError]     = useState('');
 
   useEffect(() => {
+    // Get role from URL query string
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const roleParam = params.get('role');
+      if (roleParam === 'admin') {
+        setInviteRole('admin');
+      }
+    }
+
     fetch(`/api/team/invite/validate?token=${token}`)
       .then(res => res.ok ? res.json() : Promise.reject(new Error('invalid')))
       .then(data => {
@@ -58,6 +68,7 @@ export default function InvitePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
+          email: inviteEmail.trim(),
           password,
         }),
       });
@@ -73,10 +84,10 @@ export default function InvitePage() {
 
       // Store the real JWT token returned by the server
       localStorage.setItem('cf_token', data.token);
-      localStorage.setItem('cf_email', data.user?.email || inviteEmail.trim());
-      localStorage.setItem('cf_name', data.user?.name || name.trim());
-      localStorage.setItem('cf_plan', data.user?.plan || '');
-      localStorage.setItem('cf_role', 'member');
+      localStorage.setItem('cf_email', data.user.email);
+      localStorage.setItem('cf_name', data.user.name);
+      localStorage.setItem('cf_plan', data.user.plan || 'solo');
+      localStorage.setItem('cf_role', inviteRole);
 
       router.push('/dashboard');
     } catch {
@@ -124,7 +135,16 @@ export default function InvitePage() {
           <p className="text-zinc-400 text-sm">
             <span className="text-white font-semibold">{producerName}</span> convidou você para acessar
           </p>
-          <p className="text-zinc-400 text-sm">a equipe no CreatorFlow.</p>
+          <p className="text-zinc-400 text-sm mb-4">a equipe no CreatorFlow.</p>
+
+          {/* Role Badge */}
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
+            inviteRole === 'admin'
+              ? 'bg-violet-900/30 border border-violet-800/40 text-violet-300'
+              : 'bg-emerald-900/30 border border-emerald-800/40 text-emerald-300'
+          }`}>
+            {inviteRole === 'admin' ? '👑 Você será Administrador' : '👤 Você será Membro'}
+          </div>
         </div>
 
         {/* Signup Form */}

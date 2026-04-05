@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Users, UserPlus, MessageCircle, Copy, Check, X, Link } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
@@ -19,17 +19,44 @@ function getInitials(name: string) {
 
 export default function TeamPage() {
   const router = useRouter();
-  const { teamMembers } = useAgency();
+  const { teamMembers: localTeamMembers } = useAgency();
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [inviteUrl, setInviteUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'member' | 'admin'>('member');
+
+  useEffect(() => {
+    setIsOwner(localStorage.getItem('cf_role') === 'owner');
+    // Fetch team members from server instead of localStorage
+    const fetchTeamMembers = async () => {
+      try {
+        const token = localStorage.getItem('cf_token');
+        const res = await fetch('/api/team/members', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTeamMembers(data.members || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch team members:', err);
+        // Fallback to localStorage
+        setTeamMembers(localTeamMembers);
+      }
+    };
+    fetchTeamMembers();
+  }, [localTeamMembers]);
 
   async function handleInvite() {
     setLoading(true);
     try {
       const token = localStorage.getItem('cf_token');
-      const res = await fetch('/api/team/invite', {
+      const roleQuery = selectedRole === 'admin' ? '?role=admin' : '';
+      const res = await fetch(`/api/team/invite${roleQuery}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Falha ao gerar convite');
@@ -77,14 +104,16 @@ export default function TeamPage() {
                 <p className="text-sm text-gray-500">{teamMembers.length} membros ativos</p>
               </div>
             </div>
+            {isOwner && (
             <button
-              onClick={handleInvite}
+              onClick={() => setShowRoleDialog(true)}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               <UserPlus className="w-4 h-4" />
               {loading ? 'Gerando...' : 'Convidar Membro'}
             </button>
+            )}
           </div>
 
           {/* Grid */}
@@ -127,7 +156,7 @@ export default function TeamPage() {
                   <div>
                     <h3 className="font-bold text-white text-base leading-tight">{member.name}</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {member.memberRole || (member.isOwner ? 'Proprietário' : member.role === 'admin' ? 'Admin' : 'Membro')}
+                      {member.isOwner ? 'Proprietário' : (member as { teamRole?: string }).teamRole === 'admin' ? 'Admin' : 'Membro'}
                     </p>
                   </div>
 
@@ -147,6 +176,53 @@ export default function TeamPage() {
           </div>
 
         </div>
+
+        {/* Role Selection Dialog */}
+        {showRoleDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+              <h2 className="text-lg font-bold text-white mb-4">Qual será o role do novo membro?</h2>
+
+              <div className="space-y-3 mb-6">
+                <label className="flex items-center gap-3 p-3 border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+                       onClick={() => setSelectedRole('member')}>
+                  <input type="radio" name="role" value="member" checked={selectedRole === 'member'} readOnly className="w-4 h-4" />
+                  <div>
+                    <p className="text-sm font-bold text-white">Membro</p>
+                    <p className="text-xs text-gray-400">Acesso a clientes, projetos e ferramentas básicas</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3 border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+                       onClick={() => setSelectedRole('admin')}>
+                  <input type="radio" name="role" value="admin" checked={selectedRole === 'admin'} readOnly className="w-4 h-4" />
+                  <div>
+                    <p className="text-sm font-bold text-white">Administrador</p>
+                    <p className="text-xs text-gray-400">Acesso completo + Business Intelligence</p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowRoleDialog(false)}
+                  className="flex-1 px-4 py-2.5 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRoleDialog(false);
+                    handleInvite();
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors"
+                >
+                  Gerar Link
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Invite Modal */}
         {showInviteModal && (

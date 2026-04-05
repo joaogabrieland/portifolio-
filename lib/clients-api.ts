@@ -18,17 +18,28 @@ export async function fetchClients(): Promise<Client[]> {
   if (_clientsInflight) return _clientsInflight;
 
   _clientsInflight = (async () => {
-    const res = await fetch('/api/clients', { headers: headers() });
+    const token = getToken();
+    const hdrs = headers();
+    console.log('📡 fetchClients: token exists?', !!token, 'headers:', hdrs);
+
+    const res = await fetch('/api/clients', { headers: hdrs });
+    console.log('📡 fetchClients response status:', res.status);
+
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      console.error('📡 fetchClients error response:', data);
       throw new Error(data.error || 'Erro ao carregar clientes');
     }
     const data = await res.json();
+    console.log('📡 fetchClients success:', data.clients?.length, 'clients');
     return data.clients as Client[];
   })();
 
   try {
     return await _clientsInflight;
+  } catch (err) {
+    console.error('📡 fetchClients caught error:', err);
+    throw err;
   } finally {
     _clientsInflight = null;
   }

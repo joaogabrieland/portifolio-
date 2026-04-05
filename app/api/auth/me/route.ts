@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const decoded = verifyToken(token);
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.role, u.stripe_customer_id,
+      `SELECT u.id, u.name, u.email, u.role, u.owner_id, u.stripe_customer_id,
               s.plan, s.status as subscription_status, s.current_period_end, s.cancel_at_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
@@ -30,12 +30,32 @@ export async function GET(req: NextRequest) {
 
     const user = result.rows[0];
 
+    // For members, get their team role from team_members table
+    let teamRole = null;
+    if (user.role === 'member' && user.owner_id) {
+      const teamResult = await query(
+        `SELECT role FROM team_members WHERE member_id = $1 AND owner_id = $2 LIMIT 1`,
+        [user.id.toString(), user.owner_id]
+      );
+      if (teamResult.rows.length > 0) {
+        teamRole = teamResult.rows[0].role;
+      }
+    }
+
+    // Determine final role: owner | admin | member
+    let finalRole = user.role || 'owner';
+    if (user.role === 'member' && teamRole === 'admin') {
+      finalRole = 'admin';
+    } else if (user.role === 'member') {
+      finalRole = 'member';
+    }
+
     return NextResponse.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role || 'owner',
+        role: finalRole,
         plan: user.plan,
         subscriptionStatus: user.subscription_status || 'inactive',
         currentPeriodEnd: user.current_period_end,

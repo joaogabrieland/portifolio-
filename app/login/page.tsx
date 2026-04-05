@@ -80,8 +80,6 @@ export default function LoginPage() {
     }
   };
 
-  const isValid = email && password && password.length >= 8;
-
   return (
     <AuthLayout title="Bem-vindo de volta" subtitle="Entre na sua conta para continuar criando">
       {errors.general && (
@@ -140,7 +138,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={!isValid || loading}
+          disabled={loading}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#C026D3] py-3 text-[15px] font-bold uppercase tracking-wider text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_24px_rgba(139,92,246,0.3)] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? (

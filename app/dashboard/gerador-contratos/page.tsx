@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FilePen, ChevronRight, ChevronLeft, Check, Loader2, Download, CheckCircle2, FileText, Clock } from 'lucide-react';
 
@@ -495,6 +496,16 @@ function PrintableContract({ data }: { data: ContractData }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function GeradorContratosPage() {
+  const router = useRouter();
+
+  // Role-based access control: members cannot access this feature
+  useEffect(() => {
+    const role = localStorage.getItem('cf_role');
+    if (role === 'member') {
+      router.replace('/dashboard');
+    }
+  }, [router]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [contractData, setContractData] = useState<ContractData>(INITIAL_DATA);
   const [isGenerating, setIsGenerating] = useState(false);

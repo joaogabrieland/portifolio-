@@ -282,13 +282,14 @@ export default function DashboardPage() {
   const [userPlan, setUserPlan] = useState('');
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
-  const [userRole, setUserRole] = useState<'owner' | 'member'>('owner');
+  const [userRole, setUserRole] = useState<'owner' | 'admin' | 'member'>('owner');
   const [roleLoaded, setRoleLoaded] = useState(false);
 
   // RBAC — role from /api/auth/me (server-verified).
   // Only set after /api/auth/me responds to avoid stale localStorage races.
   const { currentUser, signOut: agencySignOut } = useAgency();
   const isOwner = userRole === 'owner';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
 
   const dashboardInitRef = useRef(false);
   useEffect(() => {
@@ -299,8 +300,14 @@ export default function DashboardPage() {
     setUserName(localStorage.getItem('cf_name') || '');
     setUserEmail(localStorage.getItem('cf_email') || '');
     // Read cached role immediately so the UI doesn't flash
-    const cachedRole = localStorage.getItem('cf_role');
-    setUserRole(cachedRole === 'member' ? 'member' : 'owner');
+    const cachedRole = localStorage.getItem('cf_role') || 'owner';
+    if (cachedRole === 'member') {
+      setUserRole('member');
+    } else if (cachedRole === 'admin') {
+      setUserRole('admin');
+    } else {
+      setUserRole('owner');
+    }
     const token = localStorage.getItem('cf_token');
     if (token) {
       // AuthGuard already fetches /api/auth/me and writes fresh data to localStorage
@@ -438,14 +445,24 @@ export default function DashboardPage() {
       }
 
       // Load from API
+      console.log('🚀 About to call fetchClients()');
       fetchClients()
-        .then(apiClients => setClients(apiClients))
+        .then(apiClients => {
+          console.log('✅ Clients loaded from API:', apiClients.length, apiClients);
+          setClients(apiClients);
+        })
         .catch(err => {
-          console.error('Failed to load clients from API:', err);
+          console.error('❌ Failed to load clients from API:', err);
           // Fallback to localStorage
           const local = localStorage.getItem(CLIENTS_KEY);
           if (local) {
-            try { setClients(JSON.parse(local)); } catch { /* ignore */ }
+            try {
+              const parsed = JSON.parse(local);
+              console.log('⚠️ Using localStorage fallback:', parsed.length, parsed);
+              setClients(parsed);
+            } catch { /* ignore */ }
+          } else {
+            console.log('⚠️ No fallback in localStorage');
           }
         });
     }
@@ -1013,7 +1030,7 @@ export default function DashboardPage() {
           onNavigateToArquivos={() => { setIsClientesHubOpen(false); setIsArquivosHubOpen(true); }}
           onOpenBudgetSheet={() => { setIsClientesHubOpen(false); setActiveAgentId(AgentId.BUDGET_SHEET); }}
           onLinkCopied={() => { setShowLinkCopied(true); setTimeout(() => setShowLinkCopied(false), 2500); }}
-          isAdmin={isOwner}
+          isAdmin={isAdmin}
         />
      ) : isArquivosHubOpen ? (
         <HubArquivos
@@ -1211,7 +1228,7 @@ export default function DashboardPage() {
             </h1>
 
             <div className="flex flex-row gap-3 mb-16">
-              {userPlan === 'solo' ? (
+              {userPlan === 'solo' && userRole === 'owner' ? (
                 <div className="relative">
                   <div className="bg-white/30 text-black/40 px-6 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed select-none">
                     Hub de clientes
@@ -1353,7 +1370,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Gerencie HDs e registre ingests como Backup.</p>
                   </div>
                 </button>
-                {isOwner && (
+                {isAdmin && (
                 <button
                   onClick={() => router.push('/dashboard/pricing')}
                   className="group bg-[#0a0a0a] border border-white/5 hover:border-violet-900/50 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300"
@@ -1367,7 +1384,7 @@ export default function DashboardPage() {
                   </div>
                 </button>
                 )}
-                {isOwner && (
+                {isAdmin && (
                 <div className="relative bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 flex items-start gap-4 opacity-60 pointer-events-none">
                   <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex-shrink-0">
                     <DollarSign className="w-5 h-5 text-gray-400" />
@@ -1381,6 +1398,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 )}
+                {isAdmin && (
                 <Link
                   href="/dashboard/gerador-contratos"
                   className="group bg-[#0a0a0a] border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-5 flex items-start gap-4 text-left transition-all duration-300 hover:bg-purple-500/5"
@@ -1396,6 +1414,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 leading-relaxed">Crie contratos jurídicos blindados em formato de quiz em poucos cliques.</p>
                   </div>
                 </Link>
+                )}
               </div>
             </div>
 

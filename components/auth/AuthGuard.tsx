@@ -10,7 +10,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [checked, setChecked] = useState(false);
-  const checkedPathRef = useRef<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 10-second safety timeout — prevents infinite loading screen
@@ -40,10 +39,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       setChecked(true);
       return;
     }
-
-    // Prevent re-fetching /api/auth/me for the same pathname
-    if (checkedPathRef.current === pathname) return;
-    checkedPathRef.current = pathname;
 
     const token = localStorage.getItem('cf_token');
     if (!token) {

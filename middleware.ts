@@ -240,9 +240,8 @@ function addSecurityHeaders(response: NextResponse, request: NextRequest): NextR
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      // unsafe-inline needed for Next.js inline scripts; unsafe-eval removed for security
-      // TODO: Replace unsafe-inline with nonce-based CSP when Next.js adds native nonce support
-      "script-src 'self' 'unsafe-inline'",
+      // unsafe-inline needed for Next.js inline scripts; unsafe-eval needed for dynamic code execution
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://images.unsplash.com https://cdn.pixabay.com https://upload.wikimedia.org",

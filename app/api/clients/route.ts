@@ -35,8 +35,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ clients });
   } catch (error) {
-    console.error('ERRO AO LISTAR CLIENTES:', error);
-    return NextResponse.json({ error: 'Erro ao listar clientes' }, { status: 500 });
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('ERRO AO LISTAR CLIENTES:', errorMsg, error);
+    return NextResponse.json({ error: 'Erro ao listar clientes', details: errorMsg }, { status: 500 });
   }
 }
 

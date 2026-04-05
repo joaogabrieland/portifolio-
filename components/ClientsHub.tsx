@@ -272,6 +272,11 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
   const [inviteToast, setInviteToast]       = useState(false);
   const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
   const [editingId, setEditingId]           = useState<string | null>(null);
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [selectedRole, setSelectedRole]     = useState<'member' | 'admin'>('member');
+
+  // Check if user is owner (only owners can invite)
+  const isOwner = typeof window !== 'undefined' && localStorage.getItem('cf_role') === 'owner';
 
   // Fetch members from API when modal opens
   const membersFetchedRef = useRef(false);
@@ -293,7 +298,13 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) membersFetchedRef.current = false;
   }, [isOpen]);
 
-  const handleGenerateInvite = async () => {
+  const handleGenerateInvite = () => {
+    // Show role selection dialog instead of directly generating invite
+    setShowRoleDialog(true);
+  };
+
+  const handleConfirmRole = async () => {
+    setShowRoleDialog(false);
     setInviteLoading(true);
 
     const storedToken = localStorage.getItem('cf_token');
@@ -304,7 +315,8 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
     }
 
     try {
-      const res = await fetch('/api/team/invite', {
+      const roleQuery = selectedRole === 'admin' ? '?role=admin' : '';
+      const res = await fetch(`/api/team/invite${roleQuery}`, {
         headers: { Authorization: `Bearer ${storedToken}` },
       });
       if (!res.ok) throw new Error('Falha ao gerar convite');
@@ -414,44 +426,90 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Invite link */}
-          {!showInviteLink ? (
-            <button
-              onClick={handleGenerateInvite}
-              disabled={inviteLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-violet-700 text-violet-400 font-bold text-sm hover:bg-violet-900/20 transition-all disabled:opacity-50"
-            >
-              <UserPlus className="w-4 h-4" />
-              {inviteLoading ? 'Gerando...' : '+ Convidar Membro'}
-            </button>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5 space-y-4">
-              <div className="flex items-center justify-between mb-1">
+          {/* Invite link — only owners can invite */}
+          {isOwner && (
+            !showInviteLink ? (
+              <button
+                onClick={handleGenerateInvite}
+                disabled={inviteLoading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-violet-700 text-violet-400 font-bold text-sm hover:bg-violet-900/20 transition-all disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                {inviteLoading ? 'Gerando...' : '+ Convidar Membro'}
+              </button>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5 space-y-4">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Link className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-black text-white">Link de Convite</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowInviteLink(false)}
+                    className="p-1 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-zinc-400">Compartilhe este link para convidar um membro à sua equipe.</p>
+
                 <div className="flex items-center gap-2">
-                  <Link className="w-4 h-4 text-emerald-400" />
-                  <h3 className="text-sm font-black text-white">Link de Convite</h3>
+                  <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 truncate">
+                    {inviteUrl}
+                  </div>
+                  <button
+                    onClick={handleCopyInvite}
+                    className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold transition-colors bg-white text-black hover:bg-gray-100"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copiado!' : 'Copiar'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowInviteLink(false)}
-                  className="p-1 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
+            )
+          )}
 
-              <p className="text-xs text-zinc-400">Compartilhe este link para convidar um membro à sua equipe.</p>
+          {/* Role Selection Dialog */}
+          {showRoleDialog && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+                <h2 className="text-lg font-bold text-white mb-4">Qual será o role do novo membro?</h2>
 
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-300 truncate">
-                  {inviteUrl}
+                <div className="space-y-3 mb-6">
+                  <label className="flex items-center gap-3 p-3 border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+                         onClick={() => setSelectedRole('member')}>
+                    <input type="radio" name="role" value="member" checked={selectedRole === 'member'} readOnly className="w-4 h-4" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Membro</p>
+                      <p className="text-xs text-gray-400">Acesso a clientes, projetos e ferramentas básicas</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-white/10 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+                         onClick={() => setSelectedRole('admin')}>
+                    <input type="radio" name="role" value="admin" checked={selectedRole === 'admin'} readOnly className="w-4 h-4" />
+                    <div>
+                      <p className="text-sm font-bold text-white">Administrador</p>
+                      <p className="text-xs text-gray-400">Acesso completo + Business Intelligence</p>
+                    </div>
+                  </label>
                 </div>
-                <button
-                  onClick={handleCopyInvite}
-                  className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-bold transition-colors bg-white text-black hover:bg-gray-100"
-                >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Copiado!' : 'Copiar'}
-                </button>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowRoleDialog(false)}
+                    className="flex-1 px-4 py-2.5 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/5 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleConfirmRole}
+                    className="flex-1 px-4 py-2.5 bg-white text-black rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    Gerar Link
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -524,8 +582,8 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose }) => {
                           <MoreVertical className="w-4 h-4" />
                         </button>
 
-                        {/* Dropdown menu */}
-                        {openMenuId === member.id && editingId !== member.id && (
+                        {/* Dropdown menu — only owners can edit or remove */}
+                        {isOwner && openMenuId === member.id && editingId !== member.id && (
                           <div className="absolute right-0 top-9 z-20 w-44 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                             <button
                               onClick={() => { setEditingId(member.id); setOpenMenuId(null); }}
@@ -967,7 +1025,7 @@ const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
 // Component
 // ─────────────────────────────────────────────
 const ClientsHub: React.FC<ClientsHubProps> = ({
-  clients,
+  clients: propClients,
   onSaveClient,
   onDeleteClient,
   onBack,
@@ -976,6 +1034,9 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   onLinkCopied,
   isAdmin = true, // default admin so the component is safe to use without explicit RBAC prop
 }) => {
+  // Check if user is owner (not just admin) — only owners can invite
+  const isOwner = typeof window !== 'undefined' && localStorage.getItem('cf_role') === 'owner';
+
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [isTeamOpen, setIsTeamOpen]     = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -992,6 +1053,14 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [portalToken, setPortalToken]       = useState('');
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
+  const [clients, setClients]                = useState<Client[]>(propClients || []);
+
+  // Sync clients when prop changes OR fetch from API if empty
+  useEffect(() => {
+    if (propClients && propClients.length > 0) {
+      setClients(propClients);
+    }
+  }, [propClients]);
 
   // Fetch portal invite token once
   const portalTokenFetchedRef = useRef(false);
@@ -1010,6 +1079,27 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       })
       .catch(() => { /* ignore */ });
   }, []);
+
+  // Fetch clients from API if they arrive empty from props
+  const clientsFetchedRef = useRef(false);
+  useEffect(() => {
+    if (clients.length > 0 || clientsFetchedRef.current) return;
+    clientsFetchedRef.current = true;
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') : null;
+    if (!token) return;
+
+    console.log('📡 ClientsHub: fetching clients from API because props are empty');
+    fetch('/api/clients', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.clients && Array.isArray(data.clients) && data.clients.length > 0) {
+          console.log('✅ ClientsHub loaded', data.clients.length, 'clients from API');
+          setClients(data.clients);
+        }
+      })
+      .catch(err => console.error('❌ ClientsHub failed to load clients:', err));
+  }, [clients.length]);
 
   // Load alerts for all clients from API
   const alertsFetchedIdsRef = useRef<string>('');
