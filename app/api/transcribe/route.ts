@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { transcribeAudio } from '@/lib/gemini';
 import { verifyToken } from '@/lib/jwt';
+import { checkLimit, incrementUsage } from '@/lib/usage';
+import { PlanKey } from '@/lib/stripe';
+import { query } from '@/lib/db';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // ~25MB in base64 chars
@@ -11,7 +14,36 @@ export async function POST(request: NextRequest) {
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    verifyToken(authHeader.split(' ')[1]);
+    const decoded = verifyToken(authHeader.split(' ')[1]);
+    const userId = decoded.userId;
+
+    // Get user plan for limit checking
+    let userPlan: PlanKey | null = null;
+    const planResult = await query(
+      `SELECT s.plan FROM subscriptions s
+       WHERE s.user_id = $1 AND s.status IN ('active', 'trial')
+       ORDER BY s.created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (planResult.rows.length > 0) {
+      userPlan = planResult.rows[0].plan as PlanKey;
+    }
+
+    // Check transcription limit
+    if (userPlan) {
+      const limitCheck = await checkLimit(userId, userPlan, 'script_generator');
+
+      if (!limitCheck.allowed) {
+        return NextResponse.json({
+          error: 'Limite do plano atingido',
+          message: `Você atingiu o limite de ${limitCheck.limit.toLocaleString('pt-BR')} transcrições/mês do seu plano. Faça upgrade para continuar.`,
+          feature: 'script_generator',
+          used: limitCheck.used,
+          limit: limitCheck.limit,
+          upgradeUrl: '/#precos',
+        }, { status: 429 });
+      }
+    }
 
     const body = await request.json();
     const { audio } = body;
@@ -40,6 +72,13 @@ export async function POST(request: NextRequest) {
     }
 
     const transcript = await transcribeAudio(audio);
+
+    // Increment usage after successful transcription
+    if (userPlan) {
+      incrementUsage(userId, 'script_generator').catch(err => {
+        console.error('Failed to increment transcription usage:', err);
+      });
+    }
 
     return NextResponse.json({ transcript });
   } catch (error: unknown) {

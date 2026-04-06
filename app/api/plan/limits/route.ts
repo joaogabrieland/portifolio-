@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const result = await query(
       `SELECT s.plan, s.status FROM subscriptions s
-       WHERE s.user_id = $1 AND s.status = 'active'
+       WHERE s.user_id = $1 AND s.status IN ('active', 'trial')
        ORDER BY s.created_at DESC LIMIT 1`,
       [decoded.userId]
     );

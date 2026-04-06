@@ -16,7 +16,7 @@ export const PLANS = {
       crm: false,                    // CRM/Kanban/Agenda — Não incluso
       storage: 0,                    // Armazenamento — Não incluso (in GB)
       teamMembers: 1,                // Membros da equipe
-      scriptGenerator: 100,          // Gerador de roteiros por mês
+      scriptGenerator: 20,           // Gerador de roteiros por mês
       proposals: 10,                 // Propostas e planilhas por mês
       imageAnalysis: 20,             // Análise de imagens (iluminador e som) por mês
       storyboard: 5,                 // Storyboard por mês
@@ -32,7 +32,7 @@ export const PLANS = {
       crm: true,                     // CRM/Kanban/Agenda — Ilimitado
       storage: 10,                   // 10GB
       teamMembers: 1,                // 1 membro
-      scriptGenerator: 100,          // 100 por mês
+      scriptGenerator: 50,           // 50 por mês
       proposals: 20,                 // 20 por mês
       imageAnalysis: 30,             // 30 por mês
       storyboard: 10,                // 10 por mês
@@ -49,7 +49,7 @@ export const PLANS = {
       crm: true,                     // Ilimitado
       storage: 50,                   // 50GB
       teamMembers: 5,                // 5 membros
-      scriptGenerator: 5000,         // 5.000 por mês
+      scriptGenerator: 999999,       // Ilimitado
       proposals: 100,                // 100 por mês
       imageAnalysis: 150,            // 150 por mês
       storyboard: 40,                // 40 por mês
@@ -65,8 +65,8 @@ export const PLANS = {
       crm: true,                     // Ilimitado
       storage: 200,                  // 200GB
       teamMembers: 50,               // 50 membros
-      scriptGenerator: 5000,         // 5.000 por mês
-      proposals: 5000,               // 5.000 por mês
+      scriptGenerator: 999999,       // Ilimitado
+      proposals: 999999,             // Ilimitado
       imageAnalysis: 500,            // 500 por mês
       storyboard: 120,               // 120 por mês
     },

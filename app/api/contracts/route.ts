@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
+import { checkLimit, incrementUsage } from '@/lib/usage';
+import { PlanKey } from '@/lib/stripe';
 import { GoogleGenAI } from '@google/genai';
+import { query } from '@/lib/db';
 
 /** Strip HTML tags and known prompt injection patterns from input */
 function sanitizeInput(input: string): string {
@@ -23,6 +26,36 @@ export async function POST(req: NextRequest) {
   if (!isAuthenticated(auth)) return auth;
 
   try {
+    // Get user ID and plan for limit checking
+    const userId = (auth as { userId: string }).userId;
+    let userPlan: PlanKey | null = null;
+
+    const planResult = await query(
+      `SELECT s.plan FROM subscriptions s
+       WHERE s.user_id = $1 AND s.status IN ('active', 'trial')
+       ORDER BY s.created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (planResult.rows.length > 0) {
+      userPlan = planResult.rows[0].plan as PlanKey;
+    }
+
+    // Check contract limit
+    if (userPlan) {
+      const limitCheck = await checkLimit(userId, userPlan, 'proposals');
+
+      if (!limitCheck.allowed) {
+        return NextResponse.json({
+          error: 'Limite do plano atingido',
+          message: `Você atingiu o limite de ${limitCheck.limit.toLocaleString('pt-BR')} contratos/mês do seu plano. Faça upgrade para continuar.`,
+          feature: 'proposals',
+          used: limitCheck.used,
+          limit: limitCheck.limit,
+          upgradeUrl: '/#precos',
+        }, { status: 429 });
+      }
+    }
+
     const { clientName, projectScope, value, deadline, paymentTerms } = await req.json();
     if (!clientName || !projectScope) {
       return NextResponse.json({ error: 'Nome do cliente e escopo do projeto são obrigatórios' }, { status: 400 });
@@ -102,6 +135,13 @@ Responda APENAS com o texto do contrato, sem explicações adicionais.`;
 
     if (!text) {
       return NextResponse.json({ error: 'Failed to generate contract' }, { status: 500 });
+    }
+
+    // Increment usage after successful generation
+    if (userPlan) {
+      incrementUsage(userId, 'proposals').catch(err => {
+        console.error('Failed to increment contract usage:', err);
+      });
     }
 
     return NextResponse.json({ contract: text });
