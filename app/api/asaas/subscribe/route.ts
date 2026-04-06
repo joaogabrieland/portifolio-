@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createAsaasSubscription } from '@/lib/asaas';
+import { sendWelcomeEmail, sendTrialActivatedEmail } from '@/lib/email';
 
 interface CreditCardData {
   cardNumber: string;
@@ -96,6 +97,25 @@ export async function POST(req: NextRequest) {
       asaasSubscriptionId,
       status: 'trial',
     });
+
+    // Get user data for email sending
+    const userResult = await query(
+      'SELECT name, email FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length > 0) {
+      const { name, email } = userResult.rows[0];
+
+      // Send welcome and trial activated emails
+      sendWelcomeEmail(name, email, plan).catch(err => {
+        console.error('Failed to send welcome email:', err);
+      });
+
+      sendTrialActivatedEmail(name, email).catch(err => {
+        console.error('Failed to send trial activated email:', err);
+      });
+    }
 
     return NextResponse.json({
       success: true,
