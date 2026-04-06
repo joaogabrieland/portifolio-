@@ -66,7 +66,7 @@ export default function LoginPage() {
         // Admin bypass — always go to dashboard
         if (isAdminEmail(user.email || '')) {
           router.push('/dashboard');
-        } else if (user.subscriptionStatus !== 'active') {
+        } else if (user.subscriptionStatus !== 'active' && user.subscriptionStatus !== 'trial') {
           router.push('/subscription-inactive');
         } else {
           router.push('/dashboard');

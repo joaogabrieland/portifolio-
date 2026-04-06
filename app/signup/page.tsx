@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { User, Mail, Lock, Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
 import AuthLayout from '@/components/auth/AuthLayout';
 import PasswordStrength from '@/components/auth/PasswordStrength';
@@ -30,10 +31,12 @@ const PLAN_INFO: Record<string, { name: string; price: string; features: string[
 };
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [cpf, setCpf] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -53,6 +56,24 @@ export default function SignupPage() {
     }
   }, []);
 
+  // Format CPF with mask: XXX.XXX.XXX-XX
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
+
+  // Validate CPF (basic check)
+  const isValidCPF = (cpfValue: string): boolean => {
+    const cleanCpf = cpfValue.replace(/\D/g, '');
+    if (cleanCpf.length !== 11) return false;
+    // Check if all digits are the same (invalid CPF)
+    if (/^(\d)\1{10}$/.test(cleanCpf)) return false;
+    return true;
+  };
+
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = 'Nome obrigatório';
@@ -61,6 +82,7 @@ export default function SignupPage() {
     if (!password) errs.password = 'Senha obrigatória';
     else if (password.length < 8) errs.password = 'Mínimo 8 caracteres';
     if (confirmPassword !== password) errs.confirmPassword = 'Senhas não coincidem';
+    if (!cpf || !isValidCPF(cpf)) errs.cpf = 'CPF inválido';
     if (!accepted) errs.accepted = 'Aceite os termos para continuar';
     if (!plan) errs.general = 'Selecione um plano';
     setErrors(errs);
@@ -77,7 +99,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, plan }),
+        body: JSON.stringify({ name, email, password, cpfCnpj: cpf, plan }),
       });
 
       const data = await res.json();
@@ -88,9 +110,17 @@ export default function SignupPage() {
         return;
       }
 
-      // Redirect to Stripe Checkout (JWT issued after payment via login)
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      // Redirect to payment page with necessary data
+      if (data.requiresPayment) {
+        const params = new URLSearchParams({
+          userId: data.userId,
+          customerId: data.customerId,
+          plan: data.plan,
+          value: data.value.toString(),
+          email: data.email,
+          name: data.name,
+        });
+        router.push(`/pagamento?${params.toString()}`);
       }
     } catch {
       setErrors({ general: 'Erro de conexão. Tente novamente.' });
@@ -100,7 +130,7 @@ export default function SignupPage() {
 
   const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
   const passwordsMismatch = confirmPassword.length > 0 && confirmPassword !== password;
-  const isValid = name.trim() && email && password.length >= 8 && confirmPassword === password && accepted && plan;
+  const isValid = name.trim() && email && password.length >= 8 && confirmPassword === password && cpf && isValidCPF(cpf) && accepted && plan;
   const selectedPlan = plan ? PLAN_INFO[plan] : null;
 
   return (
@@ -202,6 +232,23 @@ export default function SignupPage() {
           {errors.email && <p className="mt-1 text-[13px] text-red-400">{errors.email}</p>}
         </div>
 
+        {/* CPF */}
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-[#A0A0A0]">CPF</label>
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#666666]" />
+            <input
+              type="text"
+              value={cpf}
+              onChange={(e) => { setCpf(formatCPF(e.target.value)); setErrors((p) => ({ ...p, cpf: '' })); }}
+              placeholder="000.000.000-00"
+              maxLength="14"
+              className="w-full rounded-xl border border-white/[0.1] bg-[#1A1A1A] py-3 pl-11 pr-4 text-sm text-white placeholder:text-[#555] outline-none transition-all focus:border-[#8B5CF6]/60 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)]"
+            />
+          </div>
+          {errors.cpf && <p className="mt-1 text-[13px] text-red-400">{errors.cpf}</p>}
+        </div>
+
         {/* Password */}
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[#A0A0A0]">Senha</label>
@@ -291,7 +338,7 @@ export default function SignupPage() {
               Criando conta...
             </>
           ) : (
-            'Criar conta e pagar'
+            'Criar conta - Próxima: Dados do cartão'
           )}
         </button>
       </form>

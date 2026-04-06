@@ -51,10 +51,10 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id,
+      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id, u.role,
               s.plan, s.status as subscription_status, s.current_period_end
        FROM users u
-       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
+       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial')
        WHERE u.email = $1
        ORDER BY s.created_at DESC
        LIMIT 1`,
@@ -70,6 +70,16 @@ export async function POST(req: NextRequest) {
     }
 
     const user = result.rows[0];
+
+    // DEBUG LOG: User data from database
+    console.log('🔐 LOGIN DEBUG:', {
+      userId: user.id,
+      email: user.email,
+      plan: user.plan,
+      subscription_status: user.subscription_status,
+      stripe_customer_id: user.stripe_customer_id,
+      role: user.role,
+    });
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {

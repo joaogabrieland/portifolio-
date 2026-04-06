@@ -90,8 +90,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Non-admin: check subscription
-        if (data.user.subscriptionStatus !== 'active') {
+        // Non-admin: check subscription — allow 'active' or 'trial'
+        if (data.user.subscriptionStatus !== 'active' && data.user.subscriptionStatus !== 'trial') {
           router.replace('/subscription-inactive');
           return;
         }

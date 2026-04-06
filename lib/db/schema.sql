@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  cpf_cnpj VARCHAR(20),
 
   -- Stripe
   stripe_customer_id VARCHAR(255),
@@ -22,6 +23,11 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   -- Stripe subscription info
   stripe_subscription_id VARCHAR(255),
   stripe_price_id VARCHAR(255),
+
+  -- Asaas subscription info
+  asaas_subscription_id VARCHAR(255),
+  asaas_customer_id VARCHAR(255),
+
   plan VARCHAR(50) NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'pending_payment',
 
@@ -38,6 +44,8 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_asaas ON subscriptions(asaas_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_asaas_customer ON subscriptions(asaas_customer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 
 -- Clients table (CRM profiles)
