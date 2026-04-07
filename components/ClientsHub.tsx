@@ -662,28 +662,65 @@ const BI_TEAM_DATA: BITeamMember[] = [];
 const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+const _BI_FUNNEL_IDS = ['preproducao', 'gravar', 'edicao', 'aprovacao', 'finalizado'] as const;
+const _EMPTY_FUNNEL = Object.fromEntries(_BI_FUNNEL_IDS.map(id => [id, 0])) as Record<string, number>;
+
 function useFinanceiroBI() {
-  const [data, setData] = useState({ totalReceived: 0, totalPending: 0 });
+  const [data, setData] = useState({
+    totalReceived: 0,
+    totalPending: 0,
+    renewals:     [] as { clientName: string; dueDate: string; daysLeft: number; amount: number }[],
+    topClients:   [] as { clientName: string; amount: number }[],
+    funnelCounts: _EMPTY_FUNNEL,
+  });
   useEffect(() => {
+    let cancelled = false;
     const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') || '' : '';
     fetch('/api/clients/bi', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(json => { if (json) setData({ totalReceived: json.totalReceived, totalPending: json.totalPending }); })
+      .then(json => {
+        if (!cancelled && json) setData({
+          totalReceived: json.totalReceived ?? 0,
+          totalPending:  json.totalPending  ?? 0,
+          renewals:      Array.isArray(json.renewals)    ? json.renewals    : [],
+          topClients:    Array.isArray(json.topClients)  ? json.topClients  : [],
+          funnelCounts:  json.funnelCounts && typeof json.funnelCounts === 'object' ? json.funnelCounts : _EMPTY_FUNNEL,
+        });
+      })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
   return data;
 }
 
+const _currentMonthLabel = (() => {
+  const now = new Date();
+  const mes = now.toLocaleDateString('pt-BR', { month: 'long' });
+  return `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${now.getFullYear()}`;
+})();
+
 const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
   const fin = useFinanceiroBI();
+  const rawStages: BIFunnelStage[] = BI_FUNNEL_COLS.map(col => ({
+    ...col,
+    count: fin.funnelCounts[col.id] ?? 0,
+    isBottleneck: false,
+  }));
+  const activeStages = rawStages.filter(s => s.id !== 'finalizado');
+  const maxCount = Math.max(0, ...activeStages.map(s => s.count));
+  if (maxCount > 0) {
+    const idx = rawStages.findIndex(s => s.id !== 'finalizado' && s.count === maxCount);
+    if (idx !== -1) rawStages[idx].isBottleneck = true;
+  }
+
   const d = {
     totalReceived:  fin.totalReceived,
     totalPending:   fin.totalPending,
     totalOverdue:   0,
     totalFinancial: fin.totalReceived + fin.totalPending,
-    topProjects:    [] as { clientName: string; amount: number }[],
-    renewals:       [] as { clientName: string; dueDate: string; daysLeft: number; amount: number }[],
-    stages:         BI_FUNNEL_COLS.map(col => ({ ...col, count: 0, isBottleneck: false })) as BIFunnelStage[],
+    topProjects:    fin.topClients,
+    renewals:       fin.renewals,
+    stages:         rawStages,
     alerts:         [] as BICriticalAlert[],
     team:           BI_TEAM_DATA,
   };
@@ -719,7 +756,7 @@ const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
 
             {/* Faturamento vs Recebíveis */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Faturamento vs Recebíveis</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Faturamento {_currentMonthLabel}</p>
               <div className="space-y-3">
                 <div>
                   <div className="flex justify-between mb-1.5">
@@ -759,7 +796,7 @@ const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
 
             {/* Top Projetos */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">Top Projetos Lucrativos</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">Top Clientes Lucrativos</p>
               {d.topProjects.length === 0 ? (
                 <p className="text-xs text-gray-600 italic">Nenhuma fatura cadastrada ainda</p>
               ) : (
