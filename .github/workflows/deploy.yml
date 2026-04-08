@@ -22,7 +22,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.LIGHTSAIL_USER }}@${{ secrets.LIGHTSAIL_HOST }} \
-            "cd ~/creatorflow && bash deploy.sh 2>&1 | tee -a /tmp/deploy.log"
+            "cd ~/creatorflow && bash deploy.sh"
 
       - name: Notify on failure
         if: failure()
