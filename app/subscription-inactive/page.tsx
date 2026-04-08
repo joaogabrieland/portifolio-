@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { AlertTriangle, CreditCard, MessageCircle, LogIn } from 'lucide-react';
+import { AlertTriangle, CreditCard, Mail, LogIn } from 'lucide-react';
 
 export default function SubscriptionInactivePage() {
   const handleLogout = () => {
@@ -44,12 +44,10 @@ export default function SubscriptionInactivePage() {
           </button>
 
           <a
-            href="https://wa.me/5527999210071"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="mailto:contato@creatorflowia.com"
             className="flex w-full items-center justify-center gap-2 rounded-xl py-2 text-sm text-[#666] hover:text-[#8B5CF6] transition-colors"
           >
-            <MessageCircle className="h-4 w-4" />
+            <Mail className="h-4 w-4" />
             Precisa de ajuda? Entre em contato
           </a>
         </div>

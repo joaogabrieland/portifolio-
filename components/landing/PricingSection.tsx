@@ -78,7 +78,7 @@ const PLANS: Plan[] = [
       'Contrato e NDA sob medida',
     ],
     cta: 'Falar com vendas',
-    ctaHref: 'https://wa.me/5527999210071',
+    ctaHref: 'mailto:contato@creatorflowia.com',
   },
 ];
 
