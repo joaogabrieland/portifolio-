@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { PLANS, PlanKey } from '@/lib/stripe';
+import { PLANS, PlanKey } from '@/lib/plans';
 
 // Feature types that can be tracked
 export type TrackableFeature = 'script_generator' | 'proposals' | 'image_analysis' | 'storyboard';

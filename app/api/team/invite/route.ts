@@ -4,7 +4,7 @@ import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { getTeamMemberCount } from '@/lib/usage';
-import { PLANS, PlanKey } from '@/lib/stripe';
+import { PLANS, PlanKey } from '@/lib/plans';
 
 export async function GET(req: NextRequest) {
   try {

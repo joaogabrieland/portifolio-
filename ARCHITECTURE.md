@@ -30,7 +30,7 @@
 - **CRM de clientes** com portal de aprovação para o cliente final
 - **Gestão de projetos** com orçamentos, freelancers, cronogramas e controle financeiro
 - **Gerador de contratos** jurídicos com PDF exportável
-- **Sistema de assinaturas** com trial de 7 dias integrado ao Asaas (gateway brasileiro) e Stripe
+- **Sistema de assinaturas** com trial de 7 dias integrado ao Asaas (gateway brasileiro)
 
 **Público-alvo:**
 - Videomakers e produtores solo
@@ -54,7 +54,6 @@
 | Hash de senha | bcryptjs | 3.0.3 |
 | IA | Google Gemini (GenAI SDK) | 1.35.0 |
 | Pagamentos BR | Asaas API | v3 |
-| Pagamentos Global | Stripe | 20.3.1 |
 | Email | Nodemailer (SMTP) | 8.0.4 |
 | PDF | Puppeteer (headless Chrome) | 24.40.0 |
 | Animações | Framer Motion | 12.38.0 |
@@ -98,7 +97,6 @@ creatorflow/
 │       ├── storyboard/         # Geração de storyboard
 │       ├── generate-pdf/       # Exportação de PDF
 │       ├── asaas/              # Assinatura e webhook Asaas
-│       ├── stripe/             # Checkout e webhook Stripe
 │       ├── team/               # Convites e membros
 │       ├── usage/              # Uso mensal do plano
 │       ├── plan/               # Limites do plano
@@ -131,7 +129,7 @@ creatorflow/
 │   ├── jwt.ts                  # Geração e verificação de tokens
 │   ├── gemini.ts               # Cliente Google Gemini AI
 │   ├── asaas.ts                # Integração Asaas
-│   ├── stripe.ts               # Configuração Stripe e planos
+│   ├── plans.ts                # Definições de planos e limites
 │   ├── email.ts                # Templates e envio de email
 │   ├── usage.ts                # Rastreamento de uso por plano
 │   ├── audit-log.ts            # Log de eventos de segurança
@@ -170,7 +168,6 @@ O banco é PostgreSQL. A conexão usa pool via `pg`. O schema completo está em 
 | `role` | VARCHAR(50) | `owner` ou `member` |
 | `owner_id` | UUID (FK → users) | Para membros: ID do dono da conta |
 | `cargo` | VARCHAR(100) | Cargo do membro na equipe |
-| `stripe_customer_id` | VARCHAR(255) | ID do cliente no Stripe |
 | `last_login_at` | TIMESTAMP | Último login registrado |
 | `created_at` | TIMESTAMP | Data de criação |
 
@@ -182,7 +179,6 @@ O banco é PostgreSQL. A conexão usa pool via `pg`. O schema completo está em 
 | `user_id` | UUID (FK → users) | Dono da assinatura |
 | `plan` | VARCHAR(50) | `solo`, `maker`, `studio`, `agency` |
 | `status` | VARCHAR(50) | `trial`, `active`, `past_due`, `canceled`, `pending_payment` |
-| `stripe_subscription_id` | VARCHAR(255) | ID no Stripe |
 | `asaas_subscription_id` | VARCHAR(255) | ID no Asaas |
 | `asaas_customer_id` | VARCHAR(255) | ID do cliente no Asaas |
 | `current_period_start` | TIMESTAMP | Início do período atual |
@@ -518,8 +514,6 @@ O controle de limites é feito em `lib/usage.ts` via função `checkLimit()`. Qu
 |--------|------|-----------|
 | POST | `/api/asaas/subscribe` | Cria assinatura no Asaas com cartão de crédito |
 | POST | `/api/asaas/webhook` | Webhook Asaas (PAYMENT_RECEIVED, PAYMENT_OVERDUE, etc.) |
-| POST | `/api/stripe/checkout` | Cria sessão de checkout no Stripe |
-| POST | `/api/stripe/webhook` | Webhook Stripe (subscription events) |
 
 ### Equipe
 
@@ -603,25 +597,7 @@ O controle de limites é feito em `lib/usage.ts` via função `checkLimit()`. Qu
 | `PAYMENT_OVERDUE` | Marca como `past_due` |
 | `SUBSCRIPTION_DELETED` | Marca como `canceled` |
 
-### 9.3 Stripe
-
-**Arquivo:** `lib/stripe.ts`
-
-- Processador global de pagamentos
-- Planos mapeados via `STRIPE_PRICE_*` env vars
-- Webhook em `POST /api/stripe/webhook`
-- Verifica assinatura do webhook com `STRIPE_WEBHOOK_SECRET`
-
-**Eventos do webhook Stripe:**
-
-| Evento | Ação |
-|--------|------|
-| `checkout.session.completed` | Ativa assinatura com período |
-| `customer.subscription.updated` | Atualiza plano/status |
-| `customer.subscription.deleted` | Cancela assinatura |
-| `invoice.payment_failed` | Marca como `past_due` |
-
-### 9.4 Email SMTP
+### 9.3 Email SMTP
 
 **Arquivo:** `lib/email.ts`
 
@@ -634,7 +610,7 @@ O controle de limites é feito em `lib/usage.ts` via função `checkLimit()`. Qu
   - **Convite de equipe**
   - **Notificações admin**
 
-### 9.5 Puppeteer (PDF)
+### 9.4 Puppeteer (PDF)
 
 - Renderização server-side via headless Chrome
 - Endpoint: `POST /api/generate-pdf`
@@ -661,7 +637,7 @@ Métodos: `GET, POST, OPTIONS`
 
 Limpeza automática de entradas antigas a cada 5 minutos.
 
-Rotas isentas: `/api/health`, `/api/stripe/webhook`
+Rota isenta: `/api/health`
 
 ### Bot Protection
 
@@ -683,7 +659,7 @@ Requisições sem `User-Agent` retornam 403.
 | `X-Content-Type-Options` | `nosniff` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Content-Security-Policy` | CSP customizado permitindo Gemini, Stripe, fontes Google |
+| `Content-Security-Policy` | CSP customizado permitindo Gemini, fontes Google |
 | `Permissions-Policy` | Camera e microfone permitidos; geolocalização bloqueada |
 | `X-Request-ID` | UUID único por requisição (para rastreamento) |
 
@@ -702,18 +678,6 @@ Requisições sem `User-Agent` retornam 403.
 | `ASAAS_API_KEY` | Chave da API Asaas (formato: `$aact_...`) |
 | `ADMIN_EMAIL` | Email do administrador do sistema |
 | `NEXT_PUBLIC_ADMIN_EMAIL` | Mesmo que acima (público, para frontend) |
-
-### Stripe
-
-| Variável | Descrição |
-|----------|-----------|
-| `STRIPE_SECRET_KEY` | Chave secreta do Stripe |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Chave pública do Stripe |
-| `STRIPE_WEBHOOK_SECRET` | Segredo para verificar assinatura do webhook |
-| `STRIPE_PRICE_SOLO` | ID do preço Stripe — plano Solo |
-| `STRIPE_PRICE_MAKER` | ID do preço Stripe — plano Maker |
-| `STRIPE_PRICE_STUDIO` | ID do preço Stripe — plano Studio |
-| `STRIPE_PRICE_AGENCY` | ID do preço Stripe — plano Agency |
 
 ### Email SMTP
 
@@ -793,7 +757,7 @@ Requisições sem `User-Agent` retornam 403.
 
 - Node.js 18+
 - PostgreSQL 14+
-- Contas/chaves: Google Gemini, Asaas (ou Stripe), SMTP
+- Contas/chaves: Google Gemini, Asaas, SMTP
 
 ### Setup
 

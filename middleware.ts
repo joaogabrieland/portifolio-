@@ -109,8 +109,8 @@ setInterval(() => {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // --- Skip rate limiting for health and webhook only ---
-  if (pathname === '/api/health' || pathname === '/api/stripe/webhook') {
+  // --- Skip rate limiting for health check only ---
+  if (pathname === '/api/health') {
     return addSecurityHeaders(NextResponse.next(), request);
   }
 

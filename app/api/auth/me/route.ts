@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const decoded = verifyToken(token);
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.role, u.owner_id, u.stripe_customer_id,
+      `SELECT u.id, u.name, u.email, u.role, u.owner_id,
               s.plan, s.status as subscription_status, s.current_period_end, s.cancel_at_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial')

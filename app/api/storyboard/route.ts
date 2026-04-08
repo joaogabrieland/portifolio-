@@ -3,7 +3,7 @@ import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { GoogleGenAI } from '@google/genai';
 import { query } from '@/lib/db';
-import { PLANS, PlanKey } from '@/lib/stripe';
+import { PLANS, PlanKey } from '@/lib/plans';
 import { checkLimit, incrementUsage } from '@/lib/usage';
 
 interface SceneInput {

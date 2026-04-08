@@ -1,16 +1,10 @@
-import Stripe from 'stripe';
-
-export const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2026-01-28.clover',
-      typescript: true,
-    })
-  : null;
+// Plan definitions — payment-provider-agnostic.
+// Imported by lib/usage.ts, lib/auth-helpers.ts, and any API route that
+// enforces plan limits. These values must match the plans configured in Asaas.
 
 export const PLANS = {
   solo: {
     name: 'Start',
-    priceId: process.env.STRIPE_PRICE_SOLO || '',
     price: 4990, // R$ 49,90 in centavos
     limits: {
       crm: false,                    // CRM/Kanban/Agenda — Não incluso
@@ -26,7 +20,6 @@ export const PLANS = {
   maker: {
     name: 'Maker',
     subtitle: 'Solo',
-    priceId: process.env.STRIPE_PRICE_MAKER || '',
     price: 6790, // R$ 67,90 in centavos
     limits: {
       crm: true,                     // CRM/Kanban/Agenda — Ilimitado
@@ -42,7 +35,6 @@ export const PLANS = {
   studio: {
     name: 'Studio',
     subtitle: 'Equipe',
-    priceId: process.env.STRIPE_PRICE_STUDIO || '',
     price: 19790, // R$ 197,90 in centavos
     popular: true,
     limits: {
@@ -59,7 +51,6 @@ export const PLANS = {
   agency: {
     name: 'Agency',
     subtitle: 'Ilimitado',
-    priceId: process.env.STRIPE_PRICE_AGENCY || '',
     price: 49790, // R$ 497,90 in centavos
     limits: {
       crm: true,                     // Ilimitado
@@ -76,13 +67,3 @@ export const PLANS = {
 
 export type PlanKey = keyof typeof PLANS;
 export type PlanLimits = typeof PLANS[PlanKey]['limits'];
-
-// Reverse mapping: Stripe price ID → plan key
-export function getPlanKeyByPriceId(priceId: string): PlanKey | null {
-  for (const [key, plan] of Object.entries(PLANS)) {
-    if (plan.priceId === priceId) {
-      return key as PlanKey;
-    }
-  }
-  return null;
-}

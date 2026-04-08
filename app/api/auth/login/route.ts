@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await query(
-      `SELECT u.id, u.name, u.email, u.password_hash, u.stripe_customer_id, u.role,
+      `SELECT u.id, u.name, u.email, u.password_hash, u.role,
               s.plan, s.status as subscription_status, s.current_period_end
        FROM users u
        LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial')
@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
       email: user.email,
       plan: user.plan,
       subscription_status: user.subscription_status,
-      stripe_customer_id: user.stripe_customer_id,
       role: user.role,
     });
 
