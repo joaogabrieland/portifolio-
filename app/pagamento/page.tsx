@@ -13,6 +13,7 @@ type FormData = {
   cep: string;
   addressNumber: string;
   cpf: string;
+  phone: string;
 };
 
 function PagamentoContent() {
@@ -40,6 +41,7 @@ function PagamentoContent() {
     cep: '',
     addressNumber: '',
     cpf: '',
+    phone: '',
   });
 
   // Redirect if missing params
@@ -73,6 +75,15 @@ function PagamentoContent() {
       .replace(/(\d{5})(\d)/, '$1-$2');
   };
 
+  // Format Phone
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
@@ -83,6 +94,8 @@ function PagamentoContent() {
       formattedValue = formatCPF(value);
     } else if (name === 'cep') {
       formattedValue = formatCEP(value);
+    } else if (name === 'phone') {
+      formattedValue = formatPhone(value);
     }
 
     setFormData(prev => ({
@@ -133,6 +146,11 @@ function PagamentoContent() {
       newErrors.cpf = 'CPF deve ter 11 dígitos';
     }
 
+    const phoneClean = formData.phone.replace(/\D/g, '');
+    if (phoneClean.length < 10 || phoneClean.length > 11) {
+      newErrors.phone = 'Telefone deve ter DDD + número (10 ou 11 dígitos)';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -166,6 +184,7 @@ function PagamentoContent() {
             cpfCnpj: formData.cpf.replace(/\D/g, ''),
             postalCode: formData.cep.replace(/\D/g, ''),
             addressNumber: formData.addressNumber,
+            mobilePhone: formData.phone.replace(/\D/g, ''),
           },
         }),
       });
@@ -374,6 +393,27 @@ function PagamentoContent() {
                 />
                 {errors.cpf && (
                   <p className="text-red-400 text-xs mt-1">{errors.cpf}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Telefone com DDD
+                </label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="(11) 91234-5678"
+                  maxLength={16}
+                  className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
+                    errors.phone ? 'border-red-600' : 'border-zinc-700'
+                  }`}
+                />
+                {errors.phone && (
+                  <p className="text-red-400 text-xs mt-1">{errors.phone}</p>
                 )}
               </div>
 

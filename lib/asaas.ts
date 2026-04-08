@@ -96,6 +96,7 @@ interface CreditCardHolderInfo {
   cpfCnpj: string;
   postalCode: string;
   addressNumber: string;
+  mobilePhone?: string;
 }
 
 export async function createAsaasSubscription(
@@ -145,6 +146,7 @@ export async function createAsaasSubscription(
           cpfCnpj: creditCardHolderInfo.cpfCnpj.replace(/\D/g, ''),
           postalCode: creditCardHolderInfo.postalCode.replace(/\D/g, ''),
           addressNumber: creditCardHolderInfo.addressNumber,
+          ...(creditCardHolderInfo.mobilePhone ? { mobilePhone: creditCardHolderInfo.mobilePhone } : {}),
         },
       }),
     });
