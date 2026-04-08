@@ -242,7 +242,7 @@ export default function SignupPage() {
               value={cpf}
               onChange={(e) => { setCpf(formatCPF(e.target.value)); setErrors((p) => ({ ...p, cpf: '' })); }}
               placeholder="000.000.000-00"
-              maxLength="14"
+              maxLength={14}
               className="w-full rounded-xl border border-white/[0.1] bg-[#1A1A1A] py-3 pl-11 pr-4 text-sm text-white placeholder:text-[#555] outline-none transition-all focus:border-[#8B5CF6]/60 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)]"
             />
           </div>

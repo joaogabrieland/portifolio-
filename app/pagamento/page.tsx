@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CreditCard, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -15,7 +15,7 @@ type FormData = {
   cpf: string;
 };
 
-export default function PagamentoPage() {
+function PagamentoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -401,5 +401,13 @@ export default function PagamentoPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PagamentoPage() {
+  return (
+    <Suspense>
+      <PagamentoContent />
+    </Suspense>
   );
 }
