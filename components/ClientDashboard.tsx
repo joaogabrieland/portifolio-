@@ -954,6 +954,23 @@ const ClientWorkflowTab: React.FC<{ client: Client }> = ({ client }) => {
 
   // ── Kanban state (persisted via API) ──────────────────────
   const { data: columns, setData: setColumns } = useClientData<KanbanColumn[]>(client.id, 'kanban', KANBAN_INITIAL_COLUMNS);
+
+  // Restaura colunas padrão ausentes quando a API retorna dados incompletos ou array vazio
+  const kanbanRestoredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (kanbanRestoredRef.current === client.id) return;
+    const existingIds = new Set(columns.map(c => c.id));
+    const missing = KANBAN_INITIAL_COLUMNS.filter(c => !existingIds.has(c.id));
+    if (missing.length > 0) {
+      kanbanRestoredRef.current = client.id;
+      setColumns(prev => {
+        const prevIds = new Set(prev.map(c => c.id));
+        const stillMissing = KANBAN_INITIAL_COLUMNS.filter(c => !prevIds.has(c.id));
+        return stillMissing.length > 0 ? [...prev, ...stillMissing] : prev;
+      });
+    }
+  }, [columns, client.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [addingToCol, setAddingToCol]           = useState<string | null>(null);
   const [editingCard, setEditingCard]           = useState<{ card: KanbanCard; colId: string } | null>(null);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
