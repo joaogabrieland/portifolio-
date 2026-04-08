@@ -134,10 +134,11 @@ export async function createAsaasSubscription(
         description: `CreatorFlow - ${plan} plan`,
         maxPaymentAttempts: 3,
         creditCard: {
-          cardNumber: creditCard.cardNumber.replace(/\s/g, ''),
-          cardExpiryMonth: creditCard.cardExpiryMonth,
-          cardExpiryYear: creditCard.cardExpiryYear,
-          cardCcv: creditCard.cardCcv,
+          holderName: creditCard.cardHolderName,
+          number: creditCard.cardNumber.replace(/\s/g, ''),
+          expiryMonth: creditCard.cardExpiryMonth,
+          expiryYear: creditCard.cardExpiryYear,
+          ccv: creditCard.cardCcv,
         },
         creditCardHolderInfo: {
           name: creditCardHolderInfo.name,

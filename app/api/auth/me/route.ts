@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       `SELECT u.id, u.name, u.email, u.role, u.owner_id, u.stripe_customer_id,
               s.plan, s.status as subscription_status, s.current_period_end, s.cancel_at_period_end
        FROM users u
-       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial')
+       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial', 'pending_payment')
        WHERE u.id = $1
        ORDER BY s.created_at DESC
        LIMIT 1`,
