@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendMessageToAgent } from '@/lib/gemini';
 import { AgentId } from '@/types';
 import { checkLimit, incrementUsage, TrackableFeature } from '@/lib/usage';
-import { PlanKey } from '@/lib/stripe';
+import { PlanKey } from '@/lib/plans';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 

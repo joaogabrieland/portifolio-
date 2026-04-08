@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { PLANS } from '@/lib/stripe';
+import { PLANS } from '@/lib/plans';
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 

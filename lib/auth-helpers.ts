@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
-import { PLANS, PlanKey } from '@/lib/stripe';
+import { PLANS, PlanKey } from '@/lib/plans';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { logSecurityEvent } from '@/lib/audit-log';
 

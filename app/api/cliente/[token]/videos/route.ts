@@ -10,7 +10,7 @@ export const maxDuration = 120;
 import { verifyToken } from '@/lib/jwt';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { checkStorageLimit } from '@/lib/usage';
-import { PlanKey } from '@/lib/stripe';
+import { PlanKey } from '@/lib/plans';
 
 const UPLOAD_DIR = process.env.VIDEO_UPLOAD_DIR || '/data/videos';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;

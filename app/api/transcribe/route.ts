@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { transcribeAudio } from '@/lib/gemini';
 import { verifyToken } from '@/lib/jwt';
 import { checkLimit, incrementUsage } from '@/lib/usage';
-import { PlanKey } from '@/lib/stripe';
+import { PlanKey } from '@/lib/plans';
 import { query } from '@/lib/db';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAndCheckCRM, isAuthenticated } from '@/lib/auth-helpers';
 import { checkLimit, incrementUsage } from '@/lib/usage';
-import { PlanKey } from '@/lib/stripe';
+import { PlanKey } from '@/lib/plans';
 import { GoogleGenAI } from '@google/genai';
 import { query } from '@/lib/db';
 

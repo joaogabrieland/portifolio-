@@ -41,6 +41,13 @@ export async function runMigrations(): Promise<void> {
       )
     `);
 
+    // Drop Stripe columns (no longer used)
+    await query(`ALTER TABLE users DROP COLUMN IF EXISTS stripe_customer_id`);
+    await query(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS stripe_subscription_id`);
+    await query(`ALTER TABLE subscriptions DROP COLUMN IF EXISTS stripe_price_id`);
+    await query(`DROP INDEX IF EXISTS idx_users_stripe_customer`);
+    await query(`DROP INDEX IF EXISTS idx_subscriptions_stripe`);
+
     console.log('✓ Database migrations completed successfully');
   } catch (error) {
     console.error('Database migration error:', error);
