@@ -260,7 +260,7 @@ export default function PagamentoPage() {
                   value={formData.cardNumber}
                   onChange={handleInputChange}
                   placeholder="0000 0000 0000 0000"
-                  maxLength="19"
+                  maxLength={19}
                   className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                     errors.cardNumber ? 'border-red-600' : 'border-zinc-700'
                   }`}
@@ -280,7 +280,7 @@ export default function PagamentoPage() {
                     value={formData.cardExpiryMonth}
                     onChange={handleInputChange}
                     placeholder="MM"
-                    maxLength="2"
+                    maxLength={2}
                     className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                       errors.cardExpiry ? 'border-red-600' : 'border-zinc-700'
                     }`}
@@ -294,7 +294,7 @@ export default function PagamentoPage() {
                     value={formData.cardExpiryYear}
                     onChange={handleInputChange}
                     placeholder="YY"
-                    maxLength="2"
+                    maxLength={2}
                     className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                       errors.cardExpiry ? 'border-red-600' : 'border-zinc-700'
                     }`}
@@ -308,7 +308,7 @@ export default function PagamentoPage() {
                     value={formData.cardCcv}
                     onChange={handleInputChange}
                     placeholder="000"
-                    maxLength="3"
+                    maxLength={3}
                     className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                       errors.cardCcv ? 'border-red-600' : 'border-zinc-700'
                     }`}
@@ -328,7 +328,7 @@ export default function PagamentoPage() {
                   value={formData.cep}
                   onChange={handleInputChange}
                   placeholder="00000-000"
-                  maxLength="9"
+                  maxLength={9}
                   className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                     errors.cep ? 'border-red-600' : 'border-zinc-700'
                   }`}
@@ -367,7 +367,7 @@ export default function PagamentoPage() {
                   value={formData.cpf}
                   onChange={handleInputChange}
                   placeholder="000.000.000-00"
-                  maxLength="14"
+                  maxLength={14}
                   className={`w-full bg-zinc-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 ${
                     errors.cpf ? 'border-red-600' : 'border-zinc-700'
                   }`}
