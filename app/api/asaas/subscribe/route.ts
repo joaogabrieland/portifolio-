@@ -17,6 +17,7 @@ interface CreditCardHolderInfo {
   cpfCnpj: string;
   postalCode: string;
   addressNumber: string;
+  mobilePhone?: string;
 }
 
 export async function POST(req: NextRequest) {
