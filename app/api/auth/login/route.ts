@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       `SELECT u.id, u.name, u.email, u.password_hash, u.role,
               s.plan, s.status as subscription_status, s.current_period_end
        FROM users u
-       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial')
+       LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status IN ('active', 'trial', 'pending_payment')
        WHERE u.email = $1
        ORDER BY s.created_at DESC
        LIMIT 1`,

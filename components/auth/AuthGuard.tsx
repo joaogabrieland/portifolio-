@@ -92,7 +92,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
         // Non-admin: check subscription — allow 'active' or 'trial'
         if (data.user.subscriptionStatus !== 'active' && data.user.subscriptionStatus !== 'trial') {
-          router.replace('/subscription-inactive');
+          if (data.user.subscriptionStatus === 'pending_payment') {
+            router.replace('/signup?pending=true');
+          } else {
+            router.replace('/subscription-inactive');
+          }
           return;
         }
 

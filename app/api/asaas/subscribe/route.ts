@@ -73,22 +73,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update subscription in database
-    const updateResult = await query(
-      `UPDATE subscriptions SET
-        asaas_subscription_id = $1,
-        status = 'trial',
-        updated_at = NOW()
+    // Step 1: Save asaas_subscription_id immediately so webhooks can find this subscription
+    await query(
+      `UPDATE subscriptions SET asaas_subscription_id = $1, updated_at = NOW()
        WHERE user_id = $2 AND plan = $3`,
       [asaasSubscriptionId, userId, plan]
     );
 
+    // Step 2: Activate trial — only if webhook hasn't already set it to 'active'
+    const updateResult = await query(
+      `UPDATE subscriptions SET
+        status = 'trial',
+        current_period_start = NOW(),
+        current_period_end = NOW() + INTERVAL '7 days',
+        updated_at = NOW()
+       WHERE user_id = $2 AND plan = $3 AND status = 'pending_payment'`,
+      [userId, plan]
+    );
+
     if (updateResult.rowCount === 0) {
-      console.error('Subscription not found for update:', userId, plan);
-      return NextResponse.json(
-        { error: 'Erro ao atualizar assinatura' },
-        { status: 404 }
+      // Either subscription not found, or webhook already activated it — both OK
+      const check = await query(
+        `SELECT status FROM subscriptions WHERE user_id = $1 AND plan = $2`,
+        [userId, plan]
       );
+      if (check.rows.length === 0) {
+        console.error('Subscription not found for update:', userId, plan);
+        return NextResponse.json(
+          { error: 'Erro ao atualizar assinatura' },
+          { status: 404 }
+        );
+      }
+      console.log('ℹ️ Subscription already activated by webhook:', check.rows[0].status);
     }
 
     console.log('✅ Subscription created successfully:', {
