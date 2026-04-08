@@ -866,11 +866,6 @@ const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
                     <p className={`text-[10px] font-black text-center uppercase tracking-wide leading-tight ${stage.isBottleneck ? 'text-red-400' : 'text-gray-500'}`}>
                       {stage.label}
                     </p>
-                    {stage.isBottleneck && (
-                      <span className="flex items-center gap-1 text-[9px] font-black text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full whitespace-nowrap">
-                        <Zap className="w-2.5 h-2.5" /> Gargalo
-                      </span>
-                    )}
                   </div>
                   {i < d.stages.length - 1 && (
                     <div className="flex items-center text-gray-700 flex-shrink-0">
@@ -880,14 +875,6 @@ const BIDashboard: React.FC<{ clients: Client[] }> = ({ clients }) => {
                 </React.Fragment>
               ))}
             </div>
-            {bottleneck && (
-              <div className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
-                <p className="text-xs font-bold text-red-400">
-                  Gargalo detectado: <strong>{bottleneck.count}</strong> {bottleneck.count === 1 ? 'vídeo acumulado' : 'vídeos acumulados'} em <strong>{bottleneck.label}</strong>
-                </p>
-              </div>
-            )}
           </div>
         </section>
       </div>
