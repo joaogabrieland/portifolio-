@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     const result = await query(
       `SELECT of.id, of.token, of.client_id, of.client_name, of.status,
-              of.created_at, of.expires_at, of.completed_at,
+              of.created_at, of.expires_at, of.completed_at, of.acknowledged_at,
               c.brand_name
        FROM onboarding_forms of
        LEFT JOIN clients c ON c.id = of.client_id
@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
       createdAt: new Date(row.created_at).getTime(),
       expiresAt: new Date(row.expires_at).getTime(),
       completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
+      acknowledgedAt: row.acknowledged_at ? new Date(row.acknowledged_at).getTime() : null,
     }));
 
     return NextResponse.json({ forms });

@@ -69,6 +69,7 @@ import {
   User,
   AlertCircle,
   Download,
+  ClipboardList,
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
@@ -88,7 +89,7 @@ interface ClientDashboardProps {
 // ─────────────────────────────────────────────
 // Tab definition
 // ─────────────────────────────────────────────
-type TabId = 'visao_geral' | 'ideias' | 'roteiros' | 'kanban' | 'agenda' | 'acervo' | 'entregas' | 'reunioes' | 'financeiro' | 'documentos' | 'cerebro_da_marca';
+type TabId = 'visao_geral' | 'ideias' | 'roteiros' | 'kanban' | 'agenda' | 'acervo' | 'entregas' | 'reunioes' | 'financeiro' | 'documentos' | 'cerebro_da_marca' | 'formulario_cliente';
 
 interface Tab {
   id: TabId;
@@ -108,6 +109,7 @@ const TABS: Tab[] = [
   { id: 'financeiro',       label: 'Financeiro & Métricas',  icon: TrendingUp  },
   { id: 'documentos',       label: 'Documentos',             icon: Folder      },
   { id: 'cerebro_da_marca', label: 'Cérebro da Marca',       icon: Brain       },
+  { id: 'formulario_cliente', label: 'Formulário do Cliente', icon: ClipboardList },
 ];
 
 // ─────────────────────────────────────────────
@@ -4963,6 +4965,136 @@ const INVOICE_STATUS_STYLES: Record<Invoice['status'], { label: string; badge: s
 };
 
 // ─────────────────────────────────────────────
+// ClientFormularioTab — respostas do formulário de onboarding
+// ─────────────────────────────────────────────
+
+const ONBOARDING_BLOCKS = [
+  { title: 'Identidade e Posicionamento', qIds: ['q1','q2','q3','q4'] },
+  { title: 'Público-alvo', qIds: ['q5','q6','q7','q8'] },
+  { title: 'Proposta de Valor e Serviços', qIds: ['q9','q10','q11','q12'] },
+  { title: 'Conteúdo e Presença Digital', qIds: ['q13','q14','q15','q16'] },
+  { title: 'Tom, Voz e Personalidade', qIds: ['q17','q18','q19'] },
+  { title: 'Objetivos e Visão', qIds: ['q20','q21','q22'] },
+];
+
+const ONBOARDING_LABELS: Record<string, string> = {
+  q1: 'Como você se apresenta profissionalmente hoje?',
+  q2: 'Em uma frase, qual é o seu diferencial?',
+  q3: 'Qual dessas opções melhor descreve seu perfil?',
+  q4: 'Você já tem algum posicionamento definido hoje?',
+  q5: 'Quem é o seu cliente ideal?',
+  q6: 'Qual a faixa etária predominante do seu público?',
+  q7: 'Onde seu público passa mais tempo consumindo conteúdo?',
+  q8: 'Qual a maior dor/problema que seu cliente ideal tem?',
+  q9: 'O que você vende? Liste seus principais serviços ou produtos.',
+  q10: 'Qual o ticket médio do seu produto/serviço principal?',
+  q11: 'Como seus clientes chegam até você hoje?',
+  q12: 'O que te impede de crescer mais rápido hoje?',
+  q13: 'Qual é sua situação atual nas redes sociais?',
+  q14: 'Você já tem algum tipo de conteúdo que performou bem?',
+  q15: 'Que tipo de conteúdo você se sente mais confortável produzindo?',
+  q16: 'Criador de conteúdo ou marca que admira e serve de referência?',
+  q17: 'Como você descreveria seu jeito de se comunicar?',
+  q18: 'Como você NÃO quer ser percebido?',
+  q19: 'Adjetivos que quer que as pessoas usem para te descrever?',
+  q20: 'Objetivo principal com a presença digital nos próximos 6 meses?',
+  q21: 'Em 2 anos, onde você quer estar profissionalmente?',
+  q22: 'Algo importante sobre você que ainda não perguntamos?',
+};
+
+const ClientFormularioTab: React.FC<{ client: Client }> = ({ client }) => {
+  const [form, setForm] = React.useState<{ formData: Record<string, unknown>; completedAt: number; clientName: string } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') : null;
+    if (!token) { setLoading(false); return; }
+    fetch(`/api/onboarding/client/${client.id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.form) setForm(data.form); })
+      .catch(() => { /* ignore */ })
+      .finally(() => setLoading(false));
+  }, [client.id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!form) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+          <ClipboardList className="w-6 h-6 text-zinc-600" />
+        </div>
+        <div>
+          <p className="font-bold text-zinc-300 mb-1">Nenhum formulário preenchido</p>
+          <p className="text-sm text-zinc-600 max-w-xs">
+            Envie o formulário de onboarding para este cliente preencher. O link pode ser gerado no Hub de Clientes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const answers = form.formData as Record<string, unknown>;
+
+  function display(qId: string): string | null {
+    const v = answers[qId];
+    if (!v || (Array.isArray(v) && v.length === 0)) return null;
+    if (Array.isArray(v)) return (v as string[]).join(', ');
+    if (v === 'outro') return String(answers[`${qId}_other`] || 'Outro');
+    return String(v);
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-bold text-white text-lg">Formulário de Onboarding</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Preenchido em {new Date(form.completedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <span className="text-xs font-bold text-emerald-400">Preenchido</span>
+        </div>
+      </div>
+
+      {/* Brand name */}
+      <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col gap-1">
+        <p className="text-xs font-bold text-violet-400 uppercase tracking-widest">Nome da Marca</p>
+        <p className="text-sm text-zinc-100">{form.clientName}</p>
+      </div>
+
+      {ONBOARDING_BLOCKS.map(block => {
+        const answered = block.qIds.filter(id => display(id));
+        if (answered.length === 0) return null;
+        return (
+          <div key={block.title} className="flex flex-col gap-3">
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">{block.title}</p>
+            {block.qIds.map(qId => {
+              const d = display(qId);
+              if (!d) return null;
+              return (
+                <div key={qId} className="flex flex-col gap-1 p-4 bg-zinc-900/60 border border-zinc-800/60 rounded-xl">
+                  <p className="text-xs text-zinc-500 font-medium">{ONBOARDING_LABELS[qId]}</p>
+                  <p className="text-sm text-zinc-200 whitespace-pre-wrap">{d}</p>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────
 // BrandBrainBadge — indicador visual reutilizável
 // ─────────────────────────────────────────────
 const BrandBrainBadge: React.FC<{ clientId: string }> = ({ clientId }) => {
@@ -7434,6 +7566,13 @@ Retorne APENAS JSON válido, sem markdown, no formato exato:
           {/* ══ TAB: Cérebro da Marca ══ */}
           {activeTab === 'cerebro_da_marca' && (
             <ClientBrandBrainTab client={client} />
+          )}
+
+          {/* ══ TAB: Formulário do Cliente ══ */}
+          {activeTab === 'formulario_cliente' && (
+            <div className="animate-in fade-in duration-200">
+              <ClientFormularioTab client={client} />
+            </div>
           )}
 
           </div>

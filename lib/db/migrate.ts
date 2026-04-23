@@ -65,6 +65,7 @@ export async function runMigrations(): Promise<void> {
     `);
     await query(`CREATE INDEX IF NOT EXISTS idx_onboarding_forms_token ON onboarding_forms(token)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_onboarding_forms_user ON onboarding_forms(user_id)`);
+    await query(`ALTER TABLE onboarding_forms ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ`);
 
     console.log('✓ Database migrations completed successfully');
   } catch (error) {

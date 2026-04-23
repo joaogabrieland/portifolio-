@@ -904,7 +904,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const [isTeamOpen, setIsTeamOpen]     = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
-  interface OnboardingForm { id: string; token: string; clientId: string | null; clientName: string; status: string; createdAt: number; completedAt: number | null; }
+  interface OnboardingForm { id: string; token: string; clientId: string | null; clientName: string; status: string; createdAt: number; completedAt: number | null; acknowledgedAt: number | null; }
   const [onboardingForms, setOnboardingForms] = useState<OnboardingForm[]>([]);
   const [showFormsList, setShowFormsList] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -1093,9 +1093,9 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             >
               <ClipboardList className="w-4 h-4" />
               <span className="hidden sm:inline">Formulário</span>
-              {onboardingForms.some(f => f.status === 'completed') && (
+              {onboardingForms.some(f => f.status === 'completed' && !f.acknowledgedAt) && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center">
-                  {onboardingForms.filter(f => f.status === 'completed').length}
+                  {onboardingForms.filter(f => f.status === 'completed' && !f.acknowledgedAt).length}
                 </span>
               )}
             </button>
@@ -1159,8 +1159,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             />
           )}
 
-          {/* Onboarding forms list */}
-          {onboardingForms.length > 0 && (
+          {/* Onboarding forms list — only non-acknowledged */}
+          {onboardingForms.filter(f => !f.acknowledgedAt).length > 0 && (
             <div className="mb-6">
               <button
                 onClick={() => setShowFormsList(v => !v)}
@@ -1168,14 +1168,14 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               >
                 <ClipboardList className="w-3.5 h-3.5" />
                 Formulários enviados
-                <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${onboardingForms.some(f => f.status === 'completed') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
-                  {onboardingForms.length}
+                <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${onboardingForms.some(f => f.status === 'completed' && !f.acknowledgedAt) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                  {onboardingForms.filter(f => !f.acknowledgedAt).length}
                 </span>
                 <span className="text-zinc-700">{showFormsList ? '↑' : '↓'}</span>
               </button>
               {showFormsList && (
                 <div className="flex flex-col gap-2">
-                  {onboardingForms.map(form => (
+                  {onboardingForms.filter(f => !f.acknowledgedAt).map(form => (
                     <div key={form.id} className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl">
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${form.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                       <div className="flex-1 min-w-0">
@@ -1187,19 +1187,34 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                           }
                         </p>
                       </div>
-                      <div className="flex items-center gap-1">
-                        {form.status === 'completed'
-                          ? <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Preenchido</span>
-                          : <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Aguardando</span>
-                        }
-                        {form.status === 'pending' && (
-                          <button
-                            onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/onboarding/${form.token}`); }}
-                            className="p-1.5 text-zinc-600 hover:text-zinc-400 transition-colors"
-                            title="Copiar link"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
+                      <div className="flex items-center gap-1.5">
+                        {form.status === 'completed' ? (
+                          <>
+                            <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Preenchido</span>
+                            <button
+                              onClick={async () => {
+                                const token = localStorage.getItem('cf_token');
+                                if (!token) return;
+                                await fetch(`/api/onboarding/${form.token}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+                                setOnboardingForms(prev => prev.map(f => f.token === form.token ? { ...f, acknowledgedAt: Date.now() } : f));
+                              }}
+                              className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 px-2 py-0.5 rounded-full border border-zinc-700 hover:border-zinc-500 transition-colors whitespace-nowrap"
+                              title="Marcar como recebido e arquivar"
+                            >
+                              Marcar como recebido
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Aguardando</span>
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/onboarding/${form.token}`); }}
+                              className="p-1.5 text-zinc-600 hover:text-zinc-400 transition-colors"
+                              title="Copiar link"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

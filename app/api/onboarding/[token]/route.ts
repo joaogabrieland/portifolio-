@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/auth-helpers';
 
 type Answers = Record<string, unknown>;
 
@@ -203,5 +204,35 @@ export async function POST(
   } catch (error) {
     console.error('ERRO AO SUBMETER FORMULÁRIO:', error);
     return NextResponse.json({ error: 'Erro ao processar formulário' }, { status: 500 });
+  }
+}
+
+// PATCH /api/onboarding/[token] — authenticated: mark form as acknowledged
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const auth = await authenticateAndCheckCRM(req);
+  if (!isAuthenticated(auth)) return auth;
+
+  const { token } = await params;
+
+  try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
+    const result = await query(
+      `UPDATE onboarding_forms SET acknowledged_at = NOW()
+       WHERE token = $1 AND user_id = $2 AND status = 'completed'
+       RETURNING id`,
+      [token, effectiveUserId]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Formulário não encontrado ou não pode ser arquivado' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('ERRO AO ARQUIVAR FORMULÁRIO:', error);
+    return NextResponse.json({ error: 'Erro ao arquivar formulário' }, { status: 500 });
   }
 }
