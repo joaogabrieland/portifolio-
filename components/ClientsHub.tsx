@@ -1216,6 +1216,19 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                             </button>
                           </>
                         )}
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Apagar o formulário de "${form.clientName}"? Esta ação não pode ser desfeita.`)) return;
+                            const token = localStorage.getItem('cf_token');
+                            if (!token) return;
+                            await fetch(`/api/onboarding/${form.token}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+                            setOnboardingForms(prev => prev.filter(f => f.token !== form.token));
+                          }}
+                          className="p-1.5 text-zinc-700 hover:text-red-500 transition-colors"
+                          title="Apagar formulário"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   ))}

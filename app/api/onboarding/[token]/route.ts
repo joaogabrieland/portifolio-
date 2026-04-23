@@ -207,6 +207,34 @@ export async function POST(
   }
 }
 
+// DELETE /api/onboarding/[token] — authenticated: delete a form (any status)
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const auth = await authenticateAndCheckCRM(req);
+  if (!isAuthenticated(auth)) return auth;
+
+  const { token } = await params;
+
+  try {
+    const effectiveUserId = await resolveOwnerId(auth.userId);
+    const result = await query(
+      `DELETE FROM onboarding_forms WHERE token = $1 AND user_id = $2 RETURNING id`,
+      [token, effectiveUserId]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('ERRO AO APAGAR FORMULÁRIO:', error);
+    return NextResponse.json({ error: 'Erro ao apagar formulário' }, { status: 500 });
+  }
+}
+
 // PATCH /api/onboarding/[token] — authenticated: mark form as acknowledged
 export async function PATCH(
   req: NextRequest,
