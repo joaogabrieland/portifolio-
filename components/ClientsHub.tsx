@@ -6,10 +6,11 @@ import {
   ArrowLeft, Plus, Users, Trash2, ChevronRight, AlertTriangle, Calendar,
   X, UserPlus, MoreVertical, Pencil, CheckCircle, Clock, Video, Globe,
   BarChart3, TrendingUp, AlertCircle, Activity, DollarSign, Layers, Zap, FileText,
-  Copy, Check, Link,
+  Copy, Check, Link, ClipboardList,
 } from 'lucide-react';
 import { Client } from '@/types';
 import ClientOnboardingModal from './ClientOnboardingModal';
+import OnboardingFormModal from './OnboardingFormModal';
 import ClientDashboard from './ClientDashboard';
 import ClientPortalView from './ClientPortalView';
 import TutorialModal, { TutorialButton } from './TutorialModal';
@@ -899,8 +900,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const isOwner = typeof window !== 'undefined' && localStorage.getItem('cf_role') === 'owner';
 
   const [isModalOpen, setIsModalOpen]   = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isTeamOpen, setIsTeamOpen]     = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+
+  interface OnboardingForm { id: string; token: string; clientId: string | null; clientName: string; status: string; createdAt: number; completedAt: number | null; }
+  const [onboardingForms, setOnboardingForms] = useState<OnboardingForm[]>([]);
+  const [showFormsList, setShowFormsList] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [portalClient, setPortalClient]     = useState<Client | null>(null);
   const [hubView, setHubView]               = useState<'bi' | 'clientes'>(isAdmin ? 'bi' : 'clientes');
@@ -938,6 +944,19 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           if (t) setPortalToken(t);
         }
       })
+      .catch(() => { /* ignore */ });
+  }, []);
+
+  // Fetch onboarding forms list
+  const formsFetchedRef = useRef(false);
+  useEffect(() => {
+    if (formsFetchedRef.current) return;
+    formsFetchedRef.current = true;
+    const token = localStorage.getItem('cf_token');
+    if (!token) return;
+    fetch('/api/onboarding', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.forms) setOnboardingForms(data.forms); })
       .catch(() => { /* ignore */ });
   }, []);
 
@@ -1069,6 +1088,18 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               <span className="hidden sm:inline">Minha Equipe</span>
             </button>
             <button
+              onClick={() => setIsFormModalOpen(true)}
+              className="relative flex items-center gap-2 px-3 sm:px-4 py-2.5 border border-violet-800/50 bg-violet-900/20 text-violet-400 rounded-xl font-bold text-sm hover:bg-violet-900/30 transition-all"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span className="hidden sm:inline">Formulário</span>
+              {onboardingForms.some(f => f.status === 'completed') && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {onboardingForms.filter(f => f.status === 'completed').length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:opacity-90 transition-all hover:scale-[1.02] active:scale-100"
             >
@@ -1126,6 +1157,56 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               clients={clients}
               onSelectClient={setSelectedClient}
             />
+          )}
+
+          {/* Onboarding forms list */}
+          {onboardingForms.length > 0 && (
+            <div className="mb-6">
+              <button
+                onClick={() => setShowFormsList(v => !v)}
+                className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-zinc-300 transition-colors mb-3"
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                Formulários enviados
+                <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${onboardingForms.some(f => f.status === 'completed') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                  {onboardingForms.length}
+                </span>
+                <span className="text-zinc-700">{showFormsList ? '↑' : '↓'}</span>
+              </button>
+              {showFormsList && (
+                <div className="flex flex-col gap-2">
+                  {onboardingForms.map(form => (
+                    <div key={form.id} className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${form.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-zinc-200 truncate">{form.clientName}</p>
+                        <p className="text-xs text-zinc-600">
+                          {form.status === 'completed'
+                            ? `Preenchido ${form.completedAt ? new Date(form.completedAt).toLocaleDateString('pt-BR') : ''}`
+                            : `Aguardando · enviado ${new Date(form.createdAt).toLocaleDateString('pt-BR')}`
+                          }
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {form.status === 'completed'
+                          ? <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Preenchido</span>
+                          : <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Aguardando</span>
+                        }
+                        {form.status === 'pending' && (
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/onboarding/${form.token}`); }}
+                            className="p-1.5 text-zinc-600 hover:text-zinc-400 transition-colors"
+                            title="Copiar link"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Empty state */}
@@ -1206,6 +1287,14 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                       🎙️ {client.voiceTone}
                     </span>
 
+                    {/* Onboarding form badge */}
+                    {onboardingForms.some(f => f.clientId === client.id && f.status === 'completed') && (
+                      <div className="self-start flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                        <ClipboardList className="w-3 h-3" />
+                        Formulário preenchido
+                      </div>
+                    )}
+
                     {/* CTA preview */}
                     {client.defaultCta && (
                       <p className="text-xs text-zinc-400 italic line-clamp-2">
@@ -1274,6 +1363,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           <Plus className="w-5 h-5" /> Novo
         </button>
       </div>
+
+      <OnboardingFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        clients={clients}
+      />
 
       <ClientOnboardingModal
         isOpen={isModalOpen}

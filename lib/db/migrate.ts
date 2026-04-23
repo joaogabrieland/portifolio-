@@ -48,6 +48,24 @@ export async function runMigrations(): Promise<void> {
     await query(`DROP INDEX IF EXISTS idx_users_stripe_customer`);
     await query(`DROP INDEX IF EXISTS idx_subscriptions_stripe`);
 
+    // Create onboarding_forms table
+    await query(`
+      CREATE TABLE IF NOT EXISTS onboarding_forms (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        token VARCHAR(64) UNIQUE NOT NULL,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+        client_name VARCHAR(255) DEFAULT '',
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        form_data JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days'),
+        completed_at TIMESTAMPTZ
+      )
+    `);
+    await query(`CREATE INDEX IF NOT EXISTS idx_onboarding_forms_token ON onboarding_forms(token)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_onboarding_forms_user ON onboarding_forms(user_id)`);
+
     console.log('✓ Database migrations completed successfully');
   } catch (error) {
     console.error('Database migration error:', error);

@@ -5,7 +5,7 @@ import { authenticateAndCheckCRM, isAuthenticated, resolveOwnerId } from '@/lib/
 const VALID_DATA_TYPES = new Set([
   'kanban', 'archive', 'agenda', 'roteiros', 'storyboard_usage',
   'entregas', 'meetings', 'invoices', 'metrics',
-  'generated_ideas', 'saved_ideas',
+  'generated_ideas', 'saved_ideas', 'brand_brain',
 ]);
 
 // GET /api/clients/:clientId/data/:dataType

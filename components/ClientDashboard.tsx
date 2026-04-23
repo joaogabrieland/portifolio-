@@ -5040,6 +5040,25 @@ const ClientBrandBrainTab: React.FC<{ client: Client }> = ({ client }) => {
   const [step, setStep]   = useState(1);
   const [saved, setSaved] = useState(false);
 
+  // Load from API on mount (takes precedence over localStorage if non-empty)
+  React.useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') : null;
+    if (!token) return;
+    fetch(`/api/clients/${client.id}/data/brand_brain`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+          const apiData = data.data as BrandBrain;
+          if (apiData.coreTransformation?.trim()) {
+            setBrain({ ...EMPTY_BRAIN, ...apiData });
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(apiData)); } catch { /* ignore */ }
+          }
+        }
+      })
+      .catch(() => { /* ignore */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client.id]);
+
   // Speech recognition state (steps 1–3 per-field voice)
   const [activeField, setActiveField] = useState<keyof BrandBrain | null>(null);
 
@@ -5056,6 +5075,15 @@ const ClientBrandBrainTab: React.FC<{ client: Client }> = ({ client }) => {
 
   const handleSave = () => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(brain)); } catch { /* ignore */ }
+    // Also persist to API
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cf_token') : null;
+    if (token) {
+      fetch(`/api/clients/${client.id}/data/brand_brain`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ data: brain }),
+      }).catch(() => { /* ignore */ });
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
