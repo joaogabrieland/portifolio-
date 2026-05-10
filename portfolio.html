@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfólio — João Andreussi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Reset & Base ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080808;
+      --surface:   #111111;
+      --card:      #161616;
+      --border:    #222222;
+      --accent:    #c8ff00;       /* lime elétrico — troque se quiser outra cor */
+      --accent2:   #7c3aed;       /* violeta complementar */
+      --text:      #f0f0f0;
+      --muted:     #777777;
+      --radius:    12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 60px;
+      background: rgba(8,8,8,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--accent); }
+
+    .nav-links {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      padding: 10px 22px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 120px 60px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* grade decorativa de fundo */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    /* brilho de acento */
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(200,255,0,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(200,255,0,0.08);
+      border: 1px solid rgba(200,255,0,0.25);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 999px;
+      margin-bottom: 32px;
+    }
+    .hero-tag::before { content: '●'; font-size: 0.5rem; animation: blink 1.4s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    .hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2.8rem, 6vw, 5.5rem);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -1px;
+      max-width: 900px;
+      margin-bottom: 24px;
+    }
+    .hero h1 .highlight { color: var(--accent); }
+
+    .hero-sub {
+      font-size: clamp(1rem, 1.5vw, 1.2rem);
+      color: var(--muted);
+      max-width: 560px;
+      margin-bottom: 48px;
+      line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 16px 36px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); opacity: 0.9; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 16px 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--muted); background: var(--surface); }
+
+    /* stats row */
+    .hero-stats {
+      display: flex;
+      gap: 60px;
+      margin-top: 80px;
+      padding-top: 48px;
+      border-top: 1px solid var(--border);
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .stat-item {}
+    .stat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    /* ─── SECTIONS ─── */
+    section {
+      padding: 100px 60px;
+    }
+
+    .section-header {
+      margin-bottom: 60px;
+    }
+    .section-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+    }
+    .section-desc {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-top: 16px;
+      max-width: 520px;
+      line-height: 1.7;
+    }
+
+    /* ─── VIDEO GRID — HORIZONTAL (16:9) ─── */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    /* ─── VIDEO GRID — VERTICAL (9:16 reels) ─── */
+    .video-grid-vertical {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    .video-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform 0.25s, border-color 0.25s;
+    }
+    .video-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(200,255,0,0.3);
+    }
+
+    /* 16:9 */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      background: #000;
+    }
+
+    /* 9:16 para reels verticais */
+    .video-wrapper.vertical {
+      padding-bottom: 177.78%;
+    }
+
+    .video-wrapper iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ─── THUMBNAIL / CLICK-TO-PLAY ─── */
+    .video-thumb {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .video-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+    .video-thumb:hover img { transform: scale(1.04); }
+
+    .play-btn {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    .video-thumb:hover .play-btn { background: rgba(0,0,0,0.15); }
+
+    .play-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.75);
+      border: 2px solid rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .video-thumb:hover .play-circle {
+      transform: scale(1.1);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .play-circle svg { fill: white; margin-left: 4px; }
+    .video-thumb:hover .play-circle svg { fill: #000; }
+
+    .video-info {
+      display: none;
+    }
+    .video-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+    }
+    .video-desc {
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+    .video-tag {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(200,255,0,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(200,255,0,0.2);
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0 60px;
+    }
+
+    /* ─── SOBRE ─── */
+    .sobre-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .sobre-text h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 3vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 24px;
+      line-height: 1.1;
+    }
+    .sobre-text p {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+
+    .skills-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .skill-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .skill-item:hover { border-color: rgba(200,255,0,0.3); }
+    .skill-icon { font-size: 1.5rem; margin-bottom: 10px; }
+    .skill-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+    .skill-detail { color: var(--muted); font-size: 0.78rem; }
+
+    /* ─── CTA / CONTATO ─── */
+    .cta-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      padding: 100px 60px;
+    }
+    .cta-section h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+    }
+    .cta-section p {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-bottom: 40px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.7;
+    }
+    .cta-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      padding: 40px 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .footer-logo span { color: var(--accent); }
+    footer p { color: var(--muted); font-size: 0.8rem; }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ─── HAMBURGER ─── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px;
+      background: none;
+      border: none;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 61px; left: 0; right: 0;
+      background: rgba(8,8,8,0.98);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      z-index: 99;
+      padding: 24px 20px;
+      flex-direction: column;
+      gap: 0;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 1.1rem;
+      font-weight: 500;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      transition: color 0.2s;
+    }
+    .mobile-menu a:last-child { border-bottom: none; padding-bottom: 0; }
+    .mobile-menu a:hover { color: var(--accent); }
+    .mobile-menu .mobile-cta {
+      margin-top: 20px;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      text-align: center;
+      padding: 14px;
+      border-radius: 999px;
+      border-bottom: none;
+    }
+
+    /* ─── RESPONSIVE — Tablet ─── */
+    @media (max-width: 900px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .hero { padding: 100px 24px 60px; }
+      section { padding: 72px 24px; }
+      .divider { margin: 0 24px; }
+      .sobre-inner { grid-template-columns: 1fr; gap: 48px; }
+      .hero-stats { gap: 32px; margin-top: 48px; padding-top: 32px; }
+      footer { padding: 32px 24px; flex-direction: column; text-align: center; }
+      .footer-links { justify-content: center; }
+      .cta-section { padding: 72px 24px; }
+      .video-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+      .video-grid-vertical { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ─── RESPONSIVE — Mobile ─── */
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      .nav-logo { font-size: 1.05rem; }
+      .nav-cta { display: none; }
+
+      .hero { padding: 86px 20px 48px; min-height: auto; }
+      .hero h1 { letter-spacing: -0.5px; margin-bottom: 16px; }
+      .hero-sub { font-size: 0.95rem; margin-bottom: 28px; }
+      .hero-actions { gap: 12px; flex-direction: column; }
+      .btn-primary, .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 15px 24px;
+        font-size: 0.9rem;
+      }
+      .hero-stats {
+        gap: 0;
+        margin-top: 40px;
+        padding-top: 28px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .hero-stats .stat-item {
+        padding: 16px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .hero-stats .stat-item:nth-child(odd) { padding-right: 16px; border-right: 1px solid var(--border); }
+      .hero-stats .stat-item:nth-child(3) { grid-column: 1 / -1; border-bottom: none; }
+      .stat-num { font-size: 1.8rem; }
+      .stat-label { font-size: 0.72rem; }
+
+      section { padding: 52px 20px; }
+      .section-title { letter-spacing: -0.5px; }
+      .divider { margin: 0 20px; }
+      .section-header { margin-bottom: 36px; }
+
+      .video-grid { grid-template-columns: 1fr; }
+      .video-grid-vertical { grid-template-columns: 1fr; }
+
+      .skills-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .skill-item { padding: 16px; }
+      .sobre-inner { gap: 36px; }
+
+      .cta-section { padding: 52px 20px; }
+      .cta-actions { flex-direction: column; align-items: stretch; }
+      .cta-actions a { text-align: center; padding: 15px 24px; }
+
+      footer { padding: 28px 20px; gap: 16px; flex-direction: column; text-align: center; }
+      .footer-links { gap: 16px; flex-wrap: wrap; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── NAV ─── -->
+  <nav>
+    <a class="nav-logo" href="#">JOÃO<span>.</span>ANDREUSSI</a>
+    <ul class="nav-links">
+      <li><a href="#campanhas">Campanhas</a></li>
+      <li><a href="#reels">Reels</a></li>
+      <li><a href="#ads">Ads</a></li>
+      <li><a href="#institucional">Institucional</a></li>
+      <li><a href="#sobre">Sobre</a></li>
+    </ul>
+    <a class="nav-cta" href="#contato">Falar comigo</a>
+    <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- ─── MOBILE MENU ─── -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#campanhas" onclick="closeMenu()">Campanhas</a>
+    <a href="#reels" onclick="closeMenu()">Reels de Campanha</a>
+    <a href="#ads" onclick="closeMenu()">Ads Criativo</a>
+    <a href="#institucional" onclick="closeMenu()">Reels Institucional</a>
+    <a href="#sobre" onclick="closeMenu()">Sobre</a>
+    <a href="#contato" class="mobile-cta" onclick="closeMenu()">Falar comigo</a>
+  </div>
+
+  <!-- ─── HERO ─── -->
+  <section class="hero">
+    <span class="hero-tag">Disponível para novos projetos</span>
+    <h1>
+      Vídeos que<br />
+      <span class="highlight">geram resultado.</span>
+    </h1>
+    <p class="hero-sub">
+      Produtor audiovisual especializado em social media, vídeos corporativos e anúncios que convertem. Do roteiro à entrega final.
+    </p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="#campanhas">Ver portfólio</a>
+      <a class="btn-secondary" href="#contato">Solicitar orçamento</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-num">+1000</div>
+        <div class="stat-label">Projetos entregues</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">+6 anos</div>
+        <div class="stat-label">No audiovisual</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">+1M</div>
+        <div class="stat-label">Visualizações em conteúdos entregues</div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── CAMPANHAS (HORIZONTAL) ─── -->
+  <section id="campanhas">
+    <div class="section-header">
+      <span class="section-tag">01 — Campanhas</span>
+      <h2 class="section-title">Campanhas de<br />Marketing</h2>
+      <p class="section-desc">Produções em formato horizontal para campanhas de marca, lançamentos e ações de marketing.</p>
+    </div>
+
+    <div class="video-grid">
+
+      <!-- CAMPANHA 1 — Borelli -->
+      <div class="video-card">
+        <div class="video-wrapper">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1tCjOI14OQJuwZig0TDdktAnUlxu-Um8d/preview')">
+            <img src="videos/borelli-thumb.jpg" alt="Gelato Borelli" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Gelato Borelli — Campanha Eurogarden</div>
+          <div class="video-desc">Campanha institucional da gelateria gourmet no Eurogarden. Identidade italiana, sabores autorais e uma experiência premium do primeiro ao último frame.</div>
+          <span class="video-tag">Campanha</span>
+        </div>
+      </div>
+
+      <!-- CAMPANHA 2 -->
+      <div class="video-card">
+        <div class="video-wrapper">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1QQy9B3OfKFZ7oPwOQA2bq4eqOGltYHjb/preview')">
+            <img src="videos/campanha-02-thumb.jpg" alt="Campanha 2" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título da campanha 2</div>
+          <div class="video-desc">Breve descrição do projeto.</div>
+          <span class="video-tag">Campanha</span>
+        </div>
+      </div>
+
+      <!-- CAMPANHA 3 — Luis -->
+      <div class="video-card">
+        <div class="video-wrapper">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1L4nTod-m734yAbddA0Gr9Fn9G7_EwKS9/preview')">
+            <img src="videos/campanha-luis-thumb.jpg" alt="Campanha Luis" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título da campanha 3</div>
+          <div class="video-desc">Breve descrição do projeto.</div>
+          <span class="video-tag">Campanha</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── REELS DE CAMPANHA (VERTICAL) ─── -->
+  <section id="reels">
+    <div class="section-header">
+      <span class="section-tag">02 — Reels</span>
+      <h2 class="section-title">Reels de<br />Campanha</h2>
+      <p class="section-desc">Conteúdo vertical criado para campanhas — otimizado para Instagram, TikTok e YouTube Shorts.</p>
+    </div>
+
+    <div class="video-grid-vertical">
+
+      <!-- REEL 2 — Dia dos Namorados -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1gg4QdID5E7cSCOdbL-2Bxt1U-G3Q4o5b/preview')">
+            <img src="videos/reel-namorados-thumb.jpg" alt="Reel Dia dos Namorados" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do reel 2</div>
+          <span class="video-tag">Reel</span>
+        </div>
+      </div>
+
+      <!-- REEL 3 — Alteração -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1Jiri4bSzybr3lYHfCXGG0tvftHOVixA5/preview')">
+            <img src="videos/reel-alteracao-thumb.jpg" alt="Reel Alteração" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do reel 3</div>
+          <span class="video-tag">Reel</span>
+        </div>
+      </div>
+
+      <!-- REEL 4 — Nelson Klir -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1RgPEjxSXwJDCybD8fZxtGC8WwRfKa9l8/preview')">
+            <img src="videos/reel-klir-nelson-thumb.jpg" alt="Nelson Klir" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Nelson — Klir</div>
+          <span class="video-tag">Reel</span>
+        </div>
+      </div>
+
+      <!-- Dia das Mães — Depoimento -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1dAk22CuI5OwRNh7j1tIs_cxOM96F5iKQ/preview')">
+            <img src="videos/conteudo-maes-depoimento-thumb.jpg" alt="Dia das Mães — Depoimento" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Dia das Mães — Depoimento</div>
+          <span class="video-tag">Reel</span>
+        </div>
+      </div>
+
+      <!-- Dr. Márcio & Valéria -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1Bo755OW6FGscCHpqojmgjqkdczIUhezL/preview')">
+            <img src="videos/conteudo-marcio-valeria-thumb.jpg" alt="Dr. Márcio & Valéria" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Dr. Márcio & Valéria — Dia das Mães</div>
+          <span class="video-tag">Reel</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── ADS CRIATIVO ─── -->
+  <section id="ads">
+    <div class="section-header">
+      <span class="section-tag">04 — Ads</span>
+      <h2 class="section-title">Ads<br />Criativo</h2>
+      <p class="section-desc">Criativos para tráfego pago — conteúdo direto, impactante e pensado para converter.</p>
+    </div>
+
+    <div class="video-grid-vertical">
+
+      <!-- Vertical 02 Ads -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1H0ZTEkJYxiQgH28al_2EfHllnUDVtOf_/preview')">
+            <img src="videos/ads-vertical-02-thumb.jpg" alt="Vertical 02 Ads" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do ad</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+      <!-- Lipoescultura -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/13c-9gwL5hT3vtfQiS6G3tneWgf_tIdqD/preview')">
+            <img src="videos/ads-lipoescultura-thumb.jpg" alt="Lipoescultura" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Lipoescultura — MM + Glúteo</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+      <!-- Corrigido 01 (movido de Conteúdos) -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1bxBsVyX6NAPaelLlok4BjTP8lDxr9_Xs/preview')">
+            <img src="videos/conteudo-corrigido-01-thumb.jpg" alt="Ad Criativo" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do ad</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+      <!-- Club M Signature -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1HOaIaNbceXkD5C5DR0dAzp0owc-rkfHa/preview')">
+            <img src="videos/conteudo-club-m-thumb.jpg" alt="Club M Signature" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Club M Signature</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+      <!-- Klir Oficial (movido de Reels) -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/14efaHxfa-J8gdqf_fDxu2g6bryaBuMUG/preview')">
+            <img src="videos/reel-klir-oficial-thumb.jpg" alt="Klir Oficial" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Klir — Vídeo Oficial</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── REELS INSTITUCIONAL CRIATIVO ─── -->
+  <section id="institucional">
+    <div class="section-header">
+      <span class="section-tag">05 — Institucional</span>
+      <h2 class="section-title">Reels Institucional<br />Criativo</h2>
+      <p class="section-desc">Reels com linguagem criativa para posicionar marcas e contar histórias com identidade forte.</p>
+    </div>
+
+    <div class="video-grid-vertical">
+
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1IoMZYXUWHUf0Ve4Xq0vK279El4yR0AoZ/preview')">
+            <img src="videos/institucional-roteiro-01-thumb.jpg" alt="Roteiro 01" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do roteiro 01</div>
+          <span class="video-tag">Institucional</span>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1o32QsE5K83yfa6Cu1XDaSnQ16Qx7GqNa/preview')">
+            <img src="videos/institucional-roteiro-02-thumb.jpg" alt="Roteiro 02" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do roteiro 02</div>
+          <span class="video-tag">Institucional</span>
+        </div>
+      </div>
+
+      <!-- Roteiro 03 -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1UmPW2-dydaf9fpTGUgWMeHEAQlnbXCE5/preview')">
+            <img src="videos/conteudo-roteiro-03-thumb.jpg" alt="Roteiro 03" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do roteiro 03</div>
+          <span class="video-tag">Institucional</span>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1lNfCmV55qqrSqcU_RChTTUEuAHi6shAp/preview')">
+            <img src="videos/institucional-roteiro-04-thumb.jpg" alt="Roteiro 04" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do roteiro 04</div>
+          <span class="video-tag">Institucional</span>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/10zYELqwvajtO7mIwtQjjDlf32h3M3XT5/preview')">
+            <img src="videos/institucional-roteiro-05-thumb.jpg" alt="Roteiro 05" />
+            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do roteiro 05</div>
+          <span class="video-tag">Institucional</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ─── SOBRE ─── -->
+  <section id="sobre">
+    <div class="sobre-inner">
+      <div class="sobre-text">
+        <div class="section-tag">Sobre mim</div>
+        <h2>Cinema, estratégia<br />e resultado.</h2>
+        <p>
+          Sou João Andreussi, produtor audiovisual com mais de 6 anos de experiência criando conteúdo para marcas em todo o Brasil — de clínicas médicas e corretores de imóveis a empresas de tecnologia e negócios em expansão.
+        </p>
+        <p>
+          Meu diferencial está na combinação entre estética cinematográfica e pensamento estratégico: cada projeto é desenvolvido para gerar impacto real, com identidade visual marcante e narrativa que converte. Mais de 1 milhão de visualizações somadas nas entregas falam por si.
+        </p>
+        <div style="margin-top: 32px;">
+          <a class="btn-primary" href="#contato">Vamos conversar →</a>
+        </div>
+      </div>
+      <div class="skills-grid">
+        <div class="skill-item">
+          <div class="skill-icon">🎬</div>
+          <div class="skill-name">Direção & Captação</div>
+          <div class="skill-detail">Direção de cena, câmera, iluminação profissional</div>
+        </div>
+        <div class="skill-item">
+          <div class="skill-icon">✂️</div>
+          <div class="skill-name">Edição & Motion</div>
+          <div class="skill-detail">Premiere, After Effects, DaVinci Resolve</div>
+        </div>
+        <div class="skill-item">
+          <div class="skill-icon">📱</div>
+          <div class="skill-name">Social Media</div>
+          <div class="skill-detail">Reels, Shorts, TikTok otimizados para algoritmo</div>
+        </div>
+        <div class="skill-item">
+          <div class="skill-icon">📢</div>
+          <div class="skill-name">Ads & Conversão</div>
+          <div class="skill-detail">Criativos para Meta Ads, Google e YouTube</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CTA / CONTATO ─── -->
+  <section class="cta-section" id="contato">
+    <span class="section-tag">Vamos trabalhar juntos</span>
+    <h2>Pronto para o<br /><span style="color:var(--accent)">próximo projeto?</span></h2>
+    <p>Me conta o que você precisa e juntos criamos um conteúdo que vai além do esperado.</p>
+    <div class="cta-actions">
+      <a class="btn-primary" href="https://wa.me/5544991389859?text=Olá!%20Vi%20seu%20portfólio%20e%20quero%20saber%20mais." target="_blank" rel="noopener">
+        💬 Chamar no WhatsApp
+      </a>
+      <a class="btn-secondary" href="mailto:joaogabrielsilva154@gmail.com">
+        ✉️ Enviar e-mail
+      </a>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <div class="footer-logo">JOÃO<span>.</span>ANDREUSSI</div>
+    <p>© 2026 — Todos os direitos reservados.</p>
+    <div class="footer-links">
+      <a href="https://instagram.com/andreusssi" target="_blank" rel="noopener">Instagram</a>
+    </div>
+  </footer>
+
+  <script>
+    /* ── Menu mobile ── */
+    function toggleMenu() {
+      var btn = document.getElementById('hamburger');
+      var menu = document.getElementById('mobileMenu');
+      btn.classList.toggle('open');
+      menu.classList.toggle('open');
+    }
+    function closeMenu() {
+      document.getElementById('hamburger').classList.remove('open');
+      document.getElementById('mobileMenu').classList.remove('open');
+    }
+
+    /* ── Click-to-play local ── */
+    function playLocal(thumb, src) {
+      var wrapper = thumb.parentElement;
+      thumb.style.display = 'none';
+      var iframe = document.createElement('iframe');
+      iframe.setAttribute('src', src);
+      iframe.setAttribute('allow', 'autoplay; fullscreen');
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;border:none;background:#000;');
+      wrapper.appendChild(iframe);
+    }
+
+  </script>
+</body>
+</html>
