@@ -1080,21 +1080,38 @@
     /* ── Click-to-play local ── */
     function playLocal(thumb, src) {
       var wrapper = thumb.parentElement;
-      var card = wrapper.closest('.video-card');
-      thumb.style.display = 'none';
-      card.style.borderRadius = '0';
-      card.style.overflow = 'hidden';
-      card.style.position = 'relative';
-      // Cria overlay que cobre todo o card
+      var isVertical = wrapper.classList.contains('vertical');
+
       var overlay = document.createElement('div');
-      overlay.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;background:#000;';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.95);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+      var closeBtn = document.createElement('button');
+      closeBtn.innerHTML = '✕';
+      closeBtn.style.cssText = 'position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1;z-index:10000;';
+      closeBtn.onclick = function() { document.body.removeChild(overlay); };
+
+      overlay.onclick = function(e) { if (e.target === overlay) document.body.removeChild(overlay); };
+
+      var box = document.createElement('div');
+      box.style.cssText = isVertical
+        ? 'height:90vh;width:calc(90vh * 9 / 16);max-width:95vw;position:relative;'
+        : 'width:90vw;height:calc(90vw * 9 / 16);max-height:85vh;position:relative;';
+
       var iframe = document.createElement('iframe');
       iframe.setAttribute('src', src);
       iframe.setAttribute('allow', 'autoplay; fullscreen');
       iframe.setAttribute('allowfullscreen', '');
-      iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
-      overlay.appendChild(iframe);
-      card.appendChild(overlay);
+      iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:#000;';
+
+      // Cobre o botão "abrir externamente" do Google Drive
+      var btnCover = document.createElement('div');
+      btnCover.style.cssText = 'position:absolute;top:0;right:0;width:64px;height:64px;z-index:3;background:#000;pointer-events:all;cursor:default;';
+
+      box.appendChild(iframe);
+      box.appendChild(btnCover);
+      overlay.appendChild(closeBtn);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
     }
 
   </script>
