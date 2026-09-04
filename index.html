@@ -6,20 +6,20 @@
   <title>Portfólio — João Andreussi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     /* ─── Reset & Base ─── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #080808;
-      --surface:   #111111;
-      --card:      #161616;
-      --border:    #222222;
-      --accent:    #c8ff00;       /* lime elétrico — troque se quiser outra cor */
-      --accent2:   #7c3aed;       /* violeta complementar */
-      --text:      #f0f0f0;
-      --muted:     #777777;
+      --bg:        #ffffff;
+      --surface:   #f7f8fa;
+      --card:      #fafbfc;
+      --border:    #e2e6ec;
+      --accent:    #2563eb;       /* azul — troque se quiser outra cor */
+      --accent2:   #60a5fa;       /* azul claro complementar */
+      --text:      #0f172a;
+      --muted:     #64748b;
       --radius:    12px;
     }
 
@@ -47,7 +47,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 20px 60px;
-      background: rgba(8,8,8,0.85);
+      background: rgba(255,255,255,0.85);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
@@ -55,7 +55,7 @@
     .nav-logo {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 1.3rem;
-      font-weight: 800;
+      font-weight: 300;
       letter-spacing: -0.5px;
       color: var(--text);
       text-decoration: none;
@@ -79,8 +79,8 @@
 
     .nav-cta {
       background: var(--accent);
-      color: #000;
-      font-weight: 700;
+      color: #fff;
+      font-weight: 500;
       font-size: 0.8rem;
       letter-spacing: 0.05em;
       padding: 10px 22px;
@@ -92,12 +92,12 @@
 
     /* ─── HERO ─── */
     .hero {
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      align-items: flex-start;
-      padding: 120px 60px 80px;
+      align-items: center;
+      text-align: center;
+      padding: 160px 60px 100px;
       position: relative;
       overflow: hidden;
     }
@@ -108,8 +108,8 @@
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(15,23,42,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15,23,42,0.04) 1px, transparent 1px);
       background-size: 60px 60px;
       pointer-events: none;
     }
@@ -120,7 +120,7 @@
       position: absolute;
       top: -200px; right: -200px;
       width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(200,255,0,0.08) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%);
       pointer-events: none;
     }
 
@@ -128,11 +128,11 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(200,255,0,0.08);
-      border: 1px solid rgba(200,255,0,0.25);
+      background: rgba(37,99,235,0.08);
+      border: 1px solid rgba(37,99,235,0.25);
       color: var(--accent);
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 400;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       padding: 6px 16px;
@@ -145,7 +145,7 @@
     .hero h1 {
       font-family: 'Space Grotesk', sans-serif;
       font-size: clamp(2.8rem, 6vw, 5.5rem);
-      font-weight: 700;
+      font-weight: 300;
       line-height: 1.08;
       letter-spacing: -1px;
       max-width: 900px;
@@ -161,12 +161,12 @@
       line-height: 1.7;
     }
 
-    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
     .btn-primary {
       background: var(--accent);
-      color: #000;
-      font-weight: 700;
+      color: #fff;
+      font-weight: 500;
       font-size: 0.9rem;
       padding: 16px 36px;
       border-radius: 999px;
@@ -178,7 +178,7 @@
     .btn-secondary {
       background: transparent;
       color: var(--text);
-      font-weight: 600;
+      font-weight: 400;
       font-size: 0.9rem;
       padding: 16px 36px;
       border-radius: 999px;
@@ -197,12 +197,13 @@
       border-top: 1px solid var(--border);
       width: 100%;
       flex-wrap: wrap;
+      justify-content: center;
     }
     .stat-item {}
     .stat-num {
       font-family: 'Space Grotesk', sans-serif;
       font-size: 2.5rem;
-      font-weight: 800;
+      font-weight: 300;
       color: var(--accent);
       line-height: 1;
     }
@@ -225,7 +226,7 @@
     .section-tag {
       display: inline-block;
       font-size: 0.7rem;
-      font-weight: 700;
+      font-weight: 500;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       color: var(--accent);
@@ -234,7 +235,7 @@
     .section-title {
       font-family: 'Space Grotesk', sans-serif;
       font-size: clamp(2rem, 3.5vw, 3rem);
-      font-weight: 800;
+      font-weight: 300;
       letter-spacing: -1px;
       line-height: 1.1;
     }
@@ -269,7 +270,7 @@
     }
     .video-card:hover {
       transform: translateY(-4px);
-      border-color: rgba(200,255,0,0.3);
+      border-color: rgba(37,99,235,0.3);
     }
 
     /* 16:9 */
@@ -337,13 +338,13 @@
       border-color: var(--accent);
     }
     .play-circle svg { fill: white; margin-left: 4px; }
-    .video-thumb:hover .play-circle svg { fill: #000; }
+    .video-thumb:hover .play-circle svg { fill: #fff; }
 
     .video-info {
       display: none;
     }
     .video-title {
-      font-weight: 600;
+      font-weight: 400;
       font-size: 0.95rem;
       margin-bottom: 6px;
     }
@@ -356,14 +357,14 @@
       display: inline-block;
       margin-top: 10px;
       font-size: 0.7rem;
-      font-weight: 600;
+      font-weight: 400;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(200,255,0,0.1);
+      background: rgba(37,99,235,0.1);
       color: var(--accent);
-      border: 1px solid rgba(200,255,0,0.2);
+      border: 1px solid rgba(37,99,235,0.2);
     }
 
     /* ─── DIVIDER ─── */
@@ -383,7 +384,7 @@
     .sobre-text h2 {
       font-family: 'Space Grotesk', sans-serif;
       font-size: clamp(2rem, 3vw, 2.8rem);
-      font-weight: 800;
+      font-weight: 300;
       letter-spacing: -1px;
       margin-bottom: 24px;
       line-height: 1.1;
@@ -407,10 +408,10 @@
       padding: 20px;
       transition: border-color 0.2s;
     }
-    .skill-item:hover { border-color: rgba(200,255,0,0.3); }
+    .skill-item:hover { border-color: rgba(37,99,235,0.3); }
     .skill-icon { font-size: 1.5rem; margin-bottom: 10px; }
     .skill-name {
-      font-weight: 600;
+      font-weight: 400;
       font-size: 0.9rem;
       margin-bottom: 4px;
     }
@@ -427,7 +428,7 @@
     .cta-section h2 {
       font-family: 'Space Grotesk', sans-serif;
       font-size: clamp(2rem, 4vw, 3.5rem);
-      font-weight: 800;
+      font-weight: 300;
       letter-spacing: -1px;
       margin-bottom: 20px;
     }
@@ -453,7 +454,7 @@
     }
     .footer-logo {
       font-family: 'Space Grotesk', sans-serif;
-      font-weight: 800;
+      font-weight: 300;
       font-size: 1.1rem;
     }
     .footer-logo span { color: var(--accent); }
@@ -493,7 +494,7 @@
       display: none;
       position: fixed;
       top: 61px; left: 0; right: 0;
-      background: rgba(8,8,8,0.98);
+      background: rgba(255,255,255,0.98);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       z-index: 99;
@@ -516,8 +517,8 @@
     .mobile-menu .mobile-cta {
       margin-top: 20px;
       background: var(--accent);
-      color: #000;
-      font-weight: 700;
+      color: #fff;
+      font-weight: 500;
       text-align: center;
       padding: 14px;
       border-radius: 999px;
@@ -624,13 +625,11 @@
 
   <!-- ─── HERO ─── -->
   <section class="hero">
-    <span class="hero-tag">Disponível para novos projetos</span>
     <h1>
-      Vídeos que<br />
-      <span class="highlight">geram resultado.</span>
+      Portfólio <span class="highlight">João Andreussi</span>
     </h1>
     <p class="hero-sub">
-      Produtor audiovisual especializado em social media, vídeos corporativos e anúncios que convertem. Do roteiro à entrega final.
+      Produtor audiovisual especializado em vídeos que convertem.
     </p>
     <div class="hero-actions">
       <a class="btn-primary" href="#campanhas">Ver portfólio</a>
@@ -721,6 +720,44 @@
         </div>
       </div>
 
+      <!-- CAMPANHA 4 -->
+      <div class="video-card">
+        <div class="video-wrapper">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1-mbvmHXgZazHb2at6AhdzfLbXxIwxgq3/preview')">
+            <img src="https://drive.google.com/thumbnail?id=1-mbvmHXgZazHb2at6AhdzfLbXxIwxgq3&sz=w1000" alt="Campanha 4" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título da campanha 4</div>
+          <div class="video-desc">Breve descrição do projeto.</div>
+          <span class="video-tag">Campanha</span>
+        </div>
+      </div>
+
+      <!-- CAMPANHA 5 -->
+      <div class="video-card">
+        <div class="video-wrapper">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/12AwuZDz2o1tHV3sz_P4GY9UGBa_5YyBx/preview')">
+            <img src="https://drive.google.com/thumbnail?id=12AwuZDz2o1tHV3sz_P4GY9UGBa_5YyBx&sz=w1000" alt="Campanha 5" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título da campanha 5</div>
+          <div class="video-desc">Breve descrição do projeto.</div>
+          <span class="video-tag">Campanha</span>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -786,19 +823,6 @@
         </div>
       </div>
 
-      <!-- Dia das Mães — Depoimento -->
-      <div class="video-card">
-        <div class="video-wrapper vertical">
-          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1dAk22CuI5OwRNh7j1tIs_cxOM96F5iKQ/preview')">
-            <img src="videos/conteudo-maes-depoimento-thumb.jpg" alt="Dia das Mães — Depoimento" />
-            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
-          </div>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Dia das Mães — Depoimento</div>
-          <span class="video-tag">Reel</span>
-        </div>
-      </div>
 
       <!-- Dr. Márcio & Valéria -->
       <div class="video-card">
@@ -845,23 +869,6 @@
         </div>
       </div>
 
-      <!-- Lipoescultura -->
-      <div class="video-card">
-        <div class="video-wrapper vertical">
-          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/13c-9gwL5hT3vtfQiS6G3tneWgf_tIdqD/preview')">
-            <img src="videos/ads-lipoescultura-thumb.jpg" alt="Lipoescultura" />
-            <div class="play-btn">
-              <div class="play-circle">
-                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Lipoescultura — MM + Glúteo</div>
-          <span class="video-tag">Ad Criativo</span>
-        </div>
-      </div>
 
       <!-- Corrigido 01 (movido de Conteúdos) -->
       <div class="video-card">
@@ -881,19 +888,6 @@
         </div>
       </div>
 
-      <!-- Club M Signature -->
-      <div class="video-card">
-        <div class="video-wrapper vertical">
-          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/1HOaIaNbceXkD5C5DR0dAzp0owc-rkfHa/preview')">
-            <img src="videos/conteudo-club-m-thumb.jpg" alt="Club M Signature" />
-            <div class="play-btn"><div class="play-circle"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div>
-          </div>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Club M Signature</div>
-          <span class="video-tag">Ad Criativo</span>
-        </div>
-      </div>
 
       <!-- Klir Oficial (movido de Reels) -->
       <div class="video-card">
@@ -909,6 +903,24 @@
         </div>
         <div class="video-info">
           <div class="video-title">Klir — Vídeo Oficial</div>
+          <span class="video-tag">Ad Criativo</span>
+        </div>
+      </div>
+
+      <!-- Criativo Pedrão 02 -->
+      <div class="video-card">
+        <div class="video-wrapper vertical">
+          <div class="video-thumb" onclick="playLocal(this, 'https://drive.google.com/file/d/10VDpmH9WVUw3vG2TaFAboNpRqx3N1Noc/preview')">
+            <img src="https://drive.google.com/thumbnail?id=10VDpmH9WVUw3vG2TaFAboNpRqx3N1Noc&sz=w1000" alt="Ad Criativo" />
+            <div class="play-btn">
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Título do ad</div>
           <span class="video-tag">Ad Criativo</span>
         </div>
       </div>
