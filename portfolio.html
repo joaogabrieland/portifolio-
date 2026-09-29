@@ -460,6 +460,9 @@
       .cta-section { padding: 110px var(--gutter); }
     }
     @media (max-width: 640px) {
+      .tag-row { display: none; }
+      .about-left { align-items: center; text-align: center; }
+      .about-left p { max-width: none; }
       .video-grid, .video-grid-vertical {
         display: flex;
         grid-template-columns: none;
@@ -493,7 +496,10 @@
       .hero-top { justify-content: flex-start; }
       .hero-intro { text-align: left; }
       .hero-bottom { flex-direction: column; align-items: flex-start; }
-      .hero-stats { gap: 28px; }
+      .hero-stats { gap: 16px; flex-wrap: nowrap; width: 100%; }
+      .stat-item { flex: 1 1 0; min-width: 0; }
+      .stat-num { font-size: 1.6rem; }
+      .stat-label { font-size: 0.56rem; letter-spacing: 0.08em; }
     }
   </style>
 </head>
